@@ -1,0 +1,138 @@
+---
+title: "german-ministry-tweets"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{german-ministry-tweets}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(textgraph)
+```
+
+
+```{r}
+data("de_pol_twitter")
+```
+
+
+
+
+
+```{r}
+seed_terms <- get_seed_terms(de_pol_twitter,
+                             doc_id = "doc_id",
+                             tokens = "lemma",
+                             grouping_var = "ministry_name",
+                             measure = "chi2",
+                             threshold = 20,
+                             show_plots = F,
+                             save_plots = F)
+```
+
+
+```{r}
+multiplex_text_network <- make_multiplex_objects(de_pol_twitter,
+                                                 vertex_a = "doc_id",
+                                                 vertex_b = "lemma",
+                                                 directed = FALSE,
+                                                 pmi_weight = TRUE,
+                                                 keep_negative_weights = TRUE,
+                                                 network = NULL,
+                                                 keep_igraph_network = FALSE,
+                                                 keep_multiplex_network = TRUE,
+                                                 keep_adjacency_matrix = FALSE,
+                                                 keep_normalized_adjacency_matrix = TRUE)
+```
+
+
+```{r}
+
+# future::plan("future::multisession") # set up a multisession. Package textgraph needs to be properly installed
+
+rwr_terms <- get_rwr_terms(multiplex_text_network,
+                           network_name = NULL,
+                           seeds = seed_terms,
+                           seed_var = "feature",
+                           match_var = NULL,
+                           flatten_results = TRUE,
+                           group_name = "ministry_name",
+                           positive_scores_only = FALSE,
+                           normalize_score = "seeds",
+                           walk_score = 0.9,
+                           walk_score_quantile = TRUE,
+                           report_quantiles = TRUE,
+                           walk_score_measure = "seeds_mean",
+                           calculate_means = TRUE,
+                           normalize_means = TRUE,
+                           reduce_to_means = TRUE,
+                           keep_seed_terms = TRUE,
+                           seedterm_value = NULL,
+                           progress = TRUE)
+```
+
+
+
+
+```{r}
+classified_documents <- classify_documents(walk_terms = rwr_terms,
+                                           group_name = "ministry_name",
+                                           document_tokens = de_pol_twitter,
+                                           tokens_var = "lemma",
+                                           doc_id = "doc_id",
+                                           classification_measure = "ScoreNormMean",
+                                           classification_cutoff = NULL,
+                                           keep_seed_terms = TRUE,
+                                           seedterm_value = NULL,
+                                           normalize_scores = "group",
+                                           cutoff_value = NULL,
+                                           cutoff_quantile = FALSE,
+                                           cutoff_normalized_scores = TRUE,
+                                           minimum_results = NULL,
+                                           cut_frequent_group_terms = NULL, 
+                                           return_walk_terms = TRUE,
+                                           return_unclassified_docs = TRUE,
+                                           verbose = TRUE)
+```
+
+
+```{r}
+get_unclassified_documents(classification_result = classified_documents,
+                           documents = de_pol_twitter %>% dplyr::summarise(content = paste(lemma, collapse = ","), .by = doc_id),
+                           doc_id = "doc_id",
+                           n = 20,
+                           mode = "print")
+```
+
+
+```{r}
+top_group_documents(classification_result = classified_documents,
+                    documents = de_pol_twitter %>% dplyr::summarise(content = paste(lemma, collapse = ","), .by = doc_id),
+                    doc_id = "doc_id",
+                    group_name = "ministry_name",
+                    classification_score = "score_norm",
+                    n = 20,
+                    with_ties = FALSE,
+                    mode = "print")
+```
+
+
+```{r}
+top_group_terms(classification_result = classified_documents,
+                  group_name = "ministry_name",
+                  classification_measure =  "ScoreNormMean",
+                  include_seed_terms = TRUE,
+                  n = 20,
+                  with_ties = TRUE,
+                  mode = "print")
+
+```
+
