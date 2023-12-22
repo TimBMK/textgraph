@@ -38,9 +38,17 @@ seed_terms <- get_seed_terms(de_pol_twitter,
                              save_plots = F)
 ```
 
+```{r}
+de_pol_twitter_reduced <- drop_quantile(data = de_pol_twitter,
+                                       tokens = "lemma",
+                                        quantile = 0.1,
+                                        ignore_case = FALSE, # in this case, "lemma" has already been set to lower case
+                                       group = "tag",
+                                        verbose = TRUE)
+```
 
 ```{r}
-multiplex_text_network <- make_multiplex_objects(de_pol_twitter,
+multiplex_text_network <- make_multiplex_objects(de_pol_twitter_reduced,
                                                  vertex_a = "doc_id",
                                                  vertex_b = "lemma",
                                                  directed = FALSE,
@@ -85,7 +93,7 @@ rwr_terms <- get_rwr_terms(multiplex_text_network,
 ```{r}
 classified_documents <- classify_documents(walk_terms = rwr_terms,
                                            group_name = "ministry_name",
-                                           document_tokens = de_pol_twitter,
+                                           document_tokens = de_pol_twitter_reduced,
                                            tokens_var = "lemma",
                                            doc_id = "doc_id",
                                            classification_measure = "ScoreNormMean",
