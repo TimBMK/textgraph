@@ -2,11 +2,10 @@
 #'
 #' This function creates and preprocesses a multiplex network for later use in Random Walks with Restart.
 #'
-#' @param dat Data frame to pass to calculate_network function. Expects a dataframe in the format of an edge list, where each row depicts an edge between `vertex_a` and `vertex_b`.
-#' @param vertex_a String; Name of the vertex A column. When calculating a PMI-weighted network, this is the document ID.
-#' @param vertex_b String; Name of the vertex B column. When calculating a PMI-weighted network, this is the feature.
-#' @param directed Logical indicating whether the network is directed or not. PMI-weighted networks are always undirected.
-#' @param pmi_weight Logical indicating whether weights should be calculated based on the PMI (Pointwise Mutual Information) of Vertex A and B.
+#' @param dat Data frame to pass to calculate_network function. Expects a dataframe in the format of an edge list, where each row depicts an edge between `document` and `feature`.
+#' @param document String; Name of the document ID column.
+#' @param feature String; Name of the feature (e.g. token) column.
+#' @param pmi_weight Logical indicating whether weights should be calculated based on the PMI (Pointwise Mutual Information) of `document` and `feature`. If `FALSE`, a simple cooccurrence weighting is performed.
 #' @param keep_negative_weights Logical indicating whether edges with negative PMI weight should be retained. Discarding them can make for a smaller network.
 #' @param network Pre-calculated network to turn into a multiplex network; if `NULL`, a network will be calculated from the vertices. Expects either `NULL` or an igraph graph.
 #' @param keep_igraph_network Logical indicating whether the igraph network should be kept separately.
@@ -27,9 +26,8 @@
 #' data("de_pol_twitter")
 #'
 #' multiplex_text_network <- make_multiplex_objects(de_pol_twitter,
-#'                                                  vertex_a = "doc_id",
-#'                                                  vertex_b = "lemma",
-#'                                                  directed = FALSE,
+#'                                                  document = "doc_id",
+#'                                                  feature = "lemma",
 #'                                                  pmi_weight = TRUE,
 #'                                                  keep_negative_weights = TRUE,
 #'                                                  network = NULL,
@@ -44,9 +42,8 @@
 #'
 #' @export
 make_multiplex_objects <- function(dat,
-                                   vertex_a,
-                                   vertex_b,
-                                   directed = FALSE,
+                                   document,
+                                   feature,
                                    pmi_weight = TRUE,
                                    keep_negative_weights = TRUE,
                                    network = NULL,
@@ -65,10 +62,10 @@ make_multiplex_objects <- function(dat,
   if (is.null(network)) {
     network <- calculate_network(
       dat,
-      vertex_a = vertex_a,
-      vertex_b = vertex_b,
-      directed = directed,
+      document = document,
+      feature = feature,
       pmi_weight = pmi_weight,
+      keep_negative_weights = keep_negative_weights,
       as_data_frame = F # return as igraph object
     )
   }

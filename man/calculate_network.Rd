@@ -6,9 +6,8 @@
 \usage{
 calculate_network(
   data,
-  vertex_a,
-  vertex_b,
-  directed = FALSE,
+  document,
+  feature,
   pmi_weight = TRUE,
   as_data_frame = FALSE,
   keep_negative_weights = TRUE
@@ -17,15 +16,13 @@ calculate_network(
 \arguments{
 \item{data}{Data frame containing the network data.}
 
-\item{vertex_a}{Name of the vertex A column.}
+\item{document}{Name of the vertex A column.}
 
-\item{vertex_b}{Name of the vertex B column.}
+\item{feature}{Name of the vertex B column.}
 
-\item{directed}{Logical indicating whether the network is directed.}
+\item{pmi_weight}{Logical indicating whether weights should be calculated based on the PMI (Pointwise Mutual Information) of `document` and `feature`. If `FALSE`, a simple cooccurrence weighting is performed.}
 
-\item{pmi_weight}{Logical indicating whether to calculate PMI weights.}
-
-\item{as_data_frame}{Logical indicating whether to output a data frame with merged edges (a to b | b to a); only relevant when not weighted by PMI.}
+\item{as_data_frame}{Logical indicating whether to output a data frame with merged edges (a to b | b to a)}
 
 \item{keep_negative_weights}{Logical indicating whether to keep edges with negative PMI weights. Only applies if `pmi_weight = TRUE`.}
 }
