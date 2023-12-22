@@ -4,7 +4,7 @@
 \alias{Random.Walk.Restart.Multiplex.failsafe}
 \title{Random Walk with Restart Failsafe for Multiplex Networks}
 \usage{
-\method{Random.Walk.Restart.Multiplex}{failsafe}(
+Random.Walk.Restart.Multiplex.failsafe(
   x,
   MultiplexObject,
   Seeds,
