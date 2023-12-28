@@ -38,7 +38,7 @@ This is effectively a wrapper for the internal function `calculate_networks()`, 
 }
 \examples{
 data("de_pol_twitter")
-textnetwork <- make_textnetwork(data = de_pol_twitter,
+text_network <- make_textnetwork(data = de_pol_twitter,
                                 document = "doc_id", 
                                 feature = "lemma",
                                 pmi_weight = TRUE,
