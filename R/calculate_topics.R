@@ -1,0 +1,268 @@
+#' Calculate Topic Cluster from a Text Network
+#'
+#' This function takes a text network represented as an igraph graph and performs
+#' topic clustering using the specified clustering algorithm. It then calculates
+#' additional metrics such as Page Rank, cluster metrics, and more.
+#'
+#' @param text_network An igraph graph representing the text network.
+#' @param documents Optional, a data frame containing document information. Expects one row per token. NULL to skip.
+#'  Returns additional information on topic-relevant documents if provided.
+#' @param document_tokens String; The column name in documents containing the document tokens.
+#' @param document_ids String; The column name in documents containing document identifiers.
+#' @param negative_edge_weights Logical indicating whether to consider only edges
+#'   with positive weights. If the chosen clustering algorithm does not support negative edge weights,
+#'   set this to `FALSE`.
+#' @param page_rank_calculation Character specifying the type of Page Rank calculation.
+#'   Options are "global" for global network Page Rank, or 
+#'   "cluster" for calculating the Page Rank of the entities within each topic cluster.
+#' @param cluster_function The clustering function to use. Can be any igraph clustering function.
+#'  Default is `igraph::cluster_leiden`.
+#' @param ... Additional arguments passed to `cluster_function`.
+#' @param keep_cluster_object Logical indicating whether to keep the igraph cluster object.
+#'  Can be helpful for additional checks. See `help(igraph::membership)` 
+#' @param verbose Logical indicating whether to print clustering metrics.
+#'
+#' @return A list object of class "textgraph_topics" containing topic entities, 
+#'   document data (optional), clustering metrics, and the cluster object (optional).
+#'
+#' @details The function performs topic clustering on the input text network, calculates
+#' additional metrics based on the specified parameters, and returns a structured object
+#' containing topics and metrics.
+#'
+#' @examples
+#' \dontrun{
+#'topics <- calculate_topics(text_network,
+#'                           documents = NULL,
+#'                           document_tokens = NULL,
+#'                           document_ids = NULL,
+#'                           negative_edge_weights = TRUE,
+#'                           page_rank_calculation = "global",
+#'                           cluster_function = cluster_leiden,
+#'                           objective_function = "CPM",
+#'                           keep_cluster_object = FALSE,
+#'                           verbose = TRUE)
+#' # optionally, we can add a dataframe with document information to get relevant documents
+#' data("de_pol_twitter")
+#'topics <- calculate_topics(text_network,
+#'                           documents = de_pol_twitter,
+#'                           document_tokens = "lemma",
+#'                           document_ids = "doc_id",
+#'                           negative_edge_weights = TRUE,
+#'                           page_rank_calculation = "global",
+#'                           cluster_function = cluster_leiden,
+#'                           objective_function = "CPM",
+#'                           keep_cluster_object = FALSE,
+#'                           verbose = TRUE)
+#' }
+#'
+#' @importFrom igraph is_igraph subgraph.edges induced_subgraph page_rank modularity sizes cluster_leiden V E
+#' @importFrom dplyr mutate left_join summarise arrange desc distinct n
+#' @importFrom tibble tibble
+#' @importFrom purrr map imap
+#' @importFrom data.table rbindlist
+#' @importFrom stats median
+#' @importFrom rlang arg_match
+#' @importFrom tidyr any_of
+#' @importFrom tidytext bind_tf_idf
+#' @importFrom scales rescale
+#'
+#' @export
+
+calculate_topics <- function(text_network,
+                             documents = NULL,
+                             document_tokens = NULL,
+                             document_ids = NULL,
+                             negative_edge_weights = TRUE,
+                             page_rank_calculation = c("global", "cluster"),
+                             cluster_function = igraph::cluster_leiden,
+                             ...,
+                             keep_cluster_object = FALSE,
+                             verbose = TRUE
+) {
+  # Argument & data checks
+  rlang::arg_match(page_rank_calculation)
+  
+  if (!(igraph::is_igraph(text_network))){
+    stop("text_network must be an igraph graph")
+  }
+  
+  if (!is.null(documents)){
+    if (is.null(document_tokens) | is.null(document_ids)){
+      stop("'document_tokens' and 'document_ids' columns must be specified.")
+    }
+    if (!(document_tokens %in% names(documents))) {
+      stop(paste(document_tokens, "not present in 'documents' object."))
+    }
+    if (!(document_ids %in% names(documents))) {
+      stop(paste(document_ids, "not present in 'documents' object."))
+    }
+  }
+  # Drop negatively weighted edges
+  if (!(negative_edge_weights)){
+    text_network <- igraph::subgraph.edges(text_network, 
+                                           which(E(text_network)$weight > 0))
+  }
+  
+  # Calcualte Topic Clusters
+  cluster <- cluster_function(text_network, ...)
+  
+  topics <- tibble::tibble(entity = igraph::V(text_network)$name,
+                           topic = igraph::membership(cluster) %>% as.numeric())
+  
+  # Calculate Page Rank
+  if (page_rank_calculation == "global") { # calculate global page rank
+    page_rank <- igraph::page_rank(text_network)$vector
+    
+    topics <- topics %>% dplyr::mutate(page_rank = page_rank)
+  }
+  
+  if (page_rank_calculation == "cluster") { # subset the graph by cluster and calculate page rank in clusters
+    igraph::V(text_network)$cluster <- igraph::membership(cluster)
+    
+    page_rank <- unique(topics$topic) %>% 
+      purrr::map(\(topic) {
+        subgraph <- igraph::induced_subgraph(text_network, 
+                                             which(V(text_network)$cluster == topic),
+                                             impl = "create_from_scratch")
+        
+        page_rank <- igraph::page_rank(subgraph)$vector
+        
+        page_rank_cluster <- tibble::tibble(entity = names(page_rank),
+                                            page_rank = page_rank,
+                                            topic = topic)
+        return(page_rank_cluster)
+      }) %>% data.table::rbindlist()
+    
+    topics <- topics %>% dplyr::left_join(page_rank, by = c("entity", "topic"))
+    
+  }
+  
+  # Calculate Cluster Metrics
+  algorithm <- tryCatch({igraph::algorithm(cluster)},
+                        error=function(error_message) {
+                          return(error_message$message)})
+  
+  nr_topics <- tryCatch(unique(cluster$membership) %>% length(),
+                        error=function(error_message) {
+                          return(error_message$message)})
+  
+  modularity <- tryCatch({igraph::modularity(cluster)}, # Modularity as calculated by most algorithms
+                    error=function(error_message) {
+                      return(error_message$message)})
+  
+  if (!is.null(cluster$quality)) { # a metric specific to the leiden algorithm
+    quality <- cluster$quality
+  } else {
+    quality <- "Quality was not calculated"
+  }
+
+  mean_topic_entities <- tryCatch({igraph::sizes(cluster) %>% mean()},
+                                  error=function(error_message) {
+                                    return(error_message$message)})
+  
+  median_topic_entities <- tryCatch({igraph::sizes(cluster) %>% stats::median()},
+                                    error=function(error_message) {
+                                      return(error_message$message)})
+  
+  metrics <- list(
+    algorithm = algorithm,
+    nr_topics = nr_topics,
+    quality = quality,
+    modularity = modularity,
+    mean_topics_entities = mean_topic_entities,
+    median_topic_entities = median_topic_entities,
+    page_rank_calculation = page_rank_calculation
+  )
+  
+  if (verbose) {
+    cat(paste(
+      "\nAlgorithm:", algorithm,
+      "\nNumber of Topics:", nr_topics,
+      "\nModularity:", modularity,
+      "\nQuality:", quality,
+      "\nMean Number of Entities per Topic:", mean_topic_entities,
+      "\nMedian Number of Entities per Topic:", median_topic_entities,
+      "\nPage Rank Calculation:", page_rank_calculation
+    ))
+  }
+  
+  # prepare document data
+  if (!is.null(documents)) { 
+    tf_idf <- topics %>%
+      dplyr::left_join(documents,
+                       by = dplyr::join_by(entity == !!as.name(document_tokens))) %>% 
+      dplyr::summarise(n = dplyr::n(), # calculate tf_idf
+                       .by = c(entity,!!as.name(document_ids),
+                               topic, page_rank)) %>%
+      tidytext::bind_tf_idf(entity, !!as.name(document_ids), n) %>% 
+      dplyr::mutate(
+        term_relevance = (tf_idf * page_rank) %>% # calculate topic term relevance as normalized (tf_idf * page_rank)
+          scales::rescale(to = c(0, 1)),
+        .by = topic
+      )
+    
+    document_data <- tf_idf %>%
+      dplyr::summarise(entities = list(entity),
+                       document_relevance = sum(term_relevance), # sum up term relevance per doc
+                       .by = c(topic, document_ids)) %>% 
+      dplyr::mutate(document_relevance = scales::rescale(document_relevance, # rescale per topic
+                                                         to = c(0,100)),
+                    .by = topic) %>% 
+      dplyr::arrange(topic, dplyr::desc(document_relevance))
+  }
+
+  # topic_object <- topics %>% 
+  #   split(.$topic)%>% 
+  #   purrr::imap(\(topic, id)
+  #               {
+  #                 if (!is.null(documents)) {
+  #                   entities <- topic %>% 
+  #                     dplyr::select(!tidyr::any_of(names(documents))) %>%
+  #                     dplyr::distinct() %>% 
+  #                     dplyr::arrange(dplyr::desc(page_rank))
+  #                 } else {
+  #                   entities <- topic %>% 
+  #                     dplyr::arrange(dplyr::desc(page_rank))
+  #                 }
+  #                 
+  #                 res <- list(entities = entities)
+  #                 
+  #                 if (!is.null(documents)){ # add document data with tf_idf
+  #                   document_data <- tf_idf %>%
+  #                     dplyr::filter(topic == id) %>% 
+  #                     dplyr::summarise(entities = list(entity),
+  #                                      document_relevance = sum(term_relevance), # maybe rescale this, but fine-grained
+  #                                      .by = document_ids) %>% 
+  #                     dplyr::mutate(topic = id) %>% 
+  #                     dplyr::arrange(dplyr::desc(document_relevance))
+  #                   
+  #                   res$documents <- document_data
+  #                 }
+  #                 return(res)
+  #   })
+  # 
+  # textgraph_topic <- list(
+  #   topics = topic_object,
+  #   metrics = metrics
+  # )
+  
+  # Finalize Topic Object
+  textgraph_topic <- list(    
+    metrics = metrics,
+    entities = topics %>% 
+      dplyr::arrange(topic, dplyr::desc(page_rank))
+  )
+  
+  if (!is.null(documents)) {
+    textgraph_topic$documents <- document_data
+  }
+  
+  if (keep_cluster_object) {
+    textgraph_topic$igraph_cluster <- cluster
+  }
+  
+  class(textgraph_topic) <- "textgraph_topics"
+  
+  return(textgraph_topic)
+}
+
