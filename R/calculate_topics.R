@@ -26,8 +26,19 @@
 #'   document data (optional), clustering metrics, and the cluster object (optional).
 #'
 #' @details The function performs topic clustering on the input text network, calculates
-#' additional metrics based on the specified parameters, and returns a structured object
-#' containing topics and metrics.
+#'  additional metrics based on the specified parameters, and returns a structured object
+#'  containing topics and metrics. 
+#'  The Page Rank of entities serves as a measure of their
+#'  relative importance in a topic cluster. It can be calculated either globally with 
+#'  `page_rank_calculation = "global"`, as the Page Rank in the complete `text_network` (faster), 
+#'  or locally for each cluster with `page_rank_calculation = "global"`, where a 
+#'  subgraph is induced containing only the nodes of the given cluster. This takes longer, 
+#'  but can provide a better measure of a term's relevance within a topic. For the latter option,
+#'  multithreading is supported if a plan was set up with `future::plan()`.
+#'  The `document_relevance` calculated for the optionally provided documents indicates
+#'  how relevant a document is to a given topics. It is calculated as the re-scaled sum of 
+#'  all topic-relevant entities' Page Rank in the document multiplied by their tf-idf 
+#'  (Term Frequency - Inverse Document Frequency).
 #'
 #' @examples
 #' \dontrun{
@@ -58,7 +69,7 @@
 #' @importFrom igraph is_igraph subgraph.edges induced_subgraph page_rank modularity sizes cluster_leiden V E
 #' @importFrom dplyr mutate left_join summarise arrange desc distinct n
 #' @importFrom tibble tibble
-#' @importFrom purrr map imap
+#' @importFrom furrr future_map 
 #' @importFrom data.table rbindlist
 #' @importFrom stats median
 #' @importFrom rlang arg_match
@@ -118,15 +129,15 @@ calculate_topics <- function(text_network,
   
   if (page_rank_calculation == "cluster") { # subset the graph by cluster and calculate page rank in clusters
     igraph::V(text_network)$cluster <- igraph::membership(cluster)
-    
+
     page_rank <- unique(topics$topic) %>% # to do: check if future_map speeds this up
-      purrr::map(\(topic) {
-        subgraph <- igraph::induced_subgraph(text_network, 
+      furrr::future_map(\(topic) {
+        subgraph <- igraph::induced_subgraph(text_network,
                                              which(V(text_network)$cluster == topic),
                                              impl = "create_from_scratch")
-        
+
         page_rank <- igraph::page_rank(subgraph)$vector
-        
+
         page_rank_cluster <- tibble::tibble(entity = names(page_rank),
                                             page_rank = page_rank,
                                             topic = topic)

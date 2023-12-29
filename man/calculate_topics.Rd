@@ -56,8 +56,19 @@ additional metrics such as Page Rank, cluster metrics, and more.
 }
 \details{
 The function performs topic clustering on the input text network, calculates
-additional metrics based on the specified parameters, and returns a structured object
-containing topics and metrics.
+ additional metrics based on the specified parameters, and returns a structured object
+ containing topics and metrics. 
+ The Page Rank of entities serves as a measure of their
+ relative importance in a topic cluster. It can be calculated either globally with 
+ `page_rank_calculation = "global"`, as the Page Rank in the complete `text_network` (faster), 
+ or locally for each cluster with `page_rank_calculation = "global"`, where a 
+ subgraph is induced containing only the nodes of the given cluster. This takes longer, 
+ but can provide a better measure of a term's relevance within a topic. For the latter option,
+ multithreading is supported if a plan was set up with `future::plan()`.
+ The `document_relevance` calculated for the optionally provided documents indicates
+ how relevant a document is to a given topics. It is calculated as the re-scaled sum of 
+ all topic-relevant entities' Page Rank in the document multiplied by their tf-idf 
+ (Term Frequency - Inverse Document Frequency).
 }
 \examples{
 \dontrun{
