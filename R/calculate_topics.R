@@ -119,7 +119,7 @@ calculate_topics <- function(text_network,
   if (page_rank_calculation == "cluster") { # subset the graph by cluster and calculate page rank in clusters
     igraph::V(text_network)$cluster <- igraph::membership(cluster)
     
-    page_rank <- unique(topics$topic) %>% 
+    page_rank <- unique(topics$topic) %>% # to do: check if future_map speeds this up
       purrr::map(\(topic) {
         subgraph <- igraph::induced_subgraph(text_network, 
                                              which(V(text_network)$cluster == topic),
@@ -182,7 +182,8 @@ calculate_topics <- function(text_network,
       "\nQuality:", quality,
       "\nMean Number of Entities per Topic:", mean_topic_entities,
       "\nMedian Number of Entities per Topic:", median_topic_entities,
-      "\nPage Rank Calculation:", page_rank_calculation
+      "\nPage Rank Calculation:", page_rank_calculation,
+      "\n"
     ))
   }
   
@@ -192,7 +193,7 @@ calculate_topics <- function(text_network,
       dplyr::left_join(documents,
                        by = dplyr::join_by(entity == !!as.name(document_tokens))) %>% 
       dplyr::summarise(n = dplyr::n(), # calculate tf_idf
-                       .by = c(entity,!!as.name(document_ids),
+                       .by = c(entity, !!as.name(document_ids),
                                topic, page_rank)) %>%
       tidytext::bind_tf_idf(entity, !!as.name(document_ids), n) %>% 
       dplyr::mutate(
@@ -204,7 +205,7 @@ calculate_topics <- function(text_network,
     document_data <- tf_idf %>%
       dplyr::summarise(entities = list(entity),
                        document_relevance = sum(term_relevance), # sum up term relevance per doc
-                       .by = c(topic, document_ids)) %>% 
+                       .by = c(topic, !!as.name(document_ids))) %>% 
       dplyr::mutate(document_relevance = scales::rescale(document_relevance, # rescale per topic
                                                          to = c(0,100)),
                     .by = topic) %>% 
