@@ -25,6 +25,7 @@
 #' @importFrom purrr map
 #' @importFrom stats median
 #' 
+#' @export
 
 filter_topics <- function(textgraph_topics,
                           topic_numbers){
