@@ -1,0 +1,163 @@
+
+```{r preparation, echo=FALSE, warning=FALSE, comment=""}
+
+if (class(textgraph_topics) != "textgraph_topics") {
+  stop("Requires a textgraph_topics object.")
+}
+
+prefilter_metrics <- textgraph_topics$metrics # safe metrics
+
+if ("documents" %in% textgraph_topics) { 
+  topics <- textgraph_topics$documents %>% 
+    dplyr::summarise(n = dplyr::n(), .by = topic) %>% 
+    dplyr::mutate(percentage = n / sum(n)) %>% 
+    dplyr::filter(percentage >= topic_threshold) 
+} else { # if no documents are available, use entity occurrence for threshold 
+  topics <- textgraph_topics$topics %>% 
+    dplyr::mutate(percentage = nr_entities / sum(nr_entities)) %>% 
+    dplyr::filter(percentage >= topic_threshold) 
+}
+
+textgraph_topics <- filter_topics(textgraph_topics, # reduce to topics above threshold
+                                  topics$topic)
+
+if (!is.null(floor_time_var_by)) { # floor the time variable if needed
+  textgraph_topics$documents <- textgraph_topics$documents %>% 
+    dplyr::mutate({{time_var}} := lubridate::floor_date(!!as.name(time_var),
+                                                              unit = floor_time_var_by))
+}
+
+
+
+```
+
+
+```{r printout, echo=FALSE, results='asis', warning=FALSE, message=FALSE}
+cat("\n*Algorithm:", prefilter_metrics$algorithm, "*",
+    "\n*Page Rank Calculation:", prefilter_metrics$page_rank_calculation, "*\n")
+
+cat("\n\nOnly Printing Topics occurring in at least", topic_threshold, "of Documents:",  
+    textgraph_topics$metrics$nr_topics, 
+    "out of", 
+    prefilter_metrics$nr_topics, "Topics. \n\n")
+
+if (!("documents" %in% textgraph_topics)){
+  cat("*Note*: No documents were provided. Topic proportions are calculated as number of",
+      "entities in a topic. Passing document data to `calculate_topics()`",
+      "provides document-related topic exploration.")
+}
+
+for (topic in topics$topic) {
+  cat("\n\n# Topic:", 
+      topic,
+      "\n## Top Terms:",
+      textgraph_topics$entities %>% dplyr::filter(topic == {{topic}}) %>% 
+        dplyr::slice_max(order_by = page_rank, n = n_top_terms) %>% 
+        dplyr::pull(entity) %>% paste(collapse = ", "),
+      "\n## Topic Proportion:",
+      topics %>% 
+          dplyr::filter(topic == {{topic}}) %>% 
+          dplyr::pull(percentage) %>% scales::percent(),
+      "\n\n"
+      )
+  
+  
+  if ("documents" %in% textgraph_topics) { # additional plots and doc vars if docs are available
+    
+    if (!is.null(time_var) & is.null(split_var)){ # over time only
+      plot <- textgraph_topics$documents %>% 
+        dplyr::filter(topic == {{topic}}) %>%
+        dplyr::summarise(topic_occurrence = n(), .by = !!as.name(time_var)) %>% 
+        ggplot2::ggplot(ggplot2::aes(x = !!as.name(time_var), 
+                                     y = topic_occurrence)) +
+        ggplot2::geom_line() +
+        ggplot2::theme_bw() +
+        ggplot2::labs(x = time_var, y = "Topic Occurrence", 
+                      title = "Topic Occurrences over Time")
+    }
+    
+    if (is.null(time_var) & !is.null(split_var)){ # split only
+      plot <- textgraph_topics$documents %>% 
+        dplyr::filter(topic == {{topic}}) %>%
+        dplyr::summarise(topic_occurrence = n(), .by = !!as.name(split_var)) %>% 
+        ggplot2::ggplot(ggplot2::aes(x = !!as.name(split_var), 
+                                     y = topic_occurrence)) +
+        ggplot2::geom_col() +
+        ggplot2::theme_bw() +
+        ggplot2::labs(x = split_var, y = "Topic Occurrence", 
+                      title = paste("Topic Occurrences by", split_var))
+    }
+    
+    if (!is.null(time_var) & !is.null(split_var)){ # over time and split
+      plot <- textgraph_topics$documents %>% 
+        dplyr::filter(topic == {{topic}}) %>%
+        dplyr::summarise(topic_occurrence = n(), .by = c(!!as.name(split_var),
+                                                         !!as.name(time_var))) %>% 
+        ggplot2::ggplot(ggplot2::aes(x = !!as.name(time_var), 
+                                     y = topic_occurrence,
+                                     color = !!as.name(split_var))) +
+        ggplot2::geom_line() +
+        ggplot2::theme_bw() +
+        ggplot2::labs(x = time_var, y = "Topic Occurrence", 
+                      title = "Topic Occurrences over Time",
+                      color = split_var)
+    }
+    
+    if (!is.null(split_var) | !is.null(time_var)) {
+      print(plot)
+    }
+    
+    
+    cat("\n\n_____________________________\n\n")
+    
+    
+    top_topic_documents <- textgraph_topics$documents %>% 
+      dplyr::filter(topic == {{topic}}) %>% 
+      dplyr::slice_max(order_by = document_relevance, 
+                       n = n_top_docs) 
+    
+    for (i in 1:(top_topic_documents %>% nrow())) {
+      
+      cat("\n*Relevance of Document:", 
+          top_topic_documents %>% dplyr::pull(document_relevance) %>% .[[i]],
+          "*")
+      
+      cat("\nEntities:",
+          top_topic_documents %>% dplyr::pull(entities) %>% .[[i]])
+      
+      cat("\n\n")
+      
+      if (!is.null(split_var)){
+        cat(paste0("*", split_var,":"),
+            top_topic_documents %>% dplyr::pull(!!as.name(split_var)) %>% .[[i]],
+            "*")
+        
+        cat("\n\n")
+      }
+      
+      if (!is.null(time_var)){
+        cat(paste0(time_var,":"),
+            top_topic_documents %>% dplyr::pull(!!as.name(time_var)) %>% .[[i]])
+        
+        cat("\n\n")
+      }
+      
+      if (!is.null(document_ids)){
+        cat(paste0("*",document_id, ":"),
+            top_topic_documents %>% dplyr::pull(!!as.name(document_ids)) %>% .[[i]],
+            "*")
+      }
+      
+      if (!is.null(text_var)){
+        cat("*Text*\n")
+        top_topic_documents %>% dplyr::pull(!!as.name(text_var)) %>% .[[i]] %>% 
+          stringr::str_remove_all("[\n\t]")  %>% cat()
+      }
+    }
+  }
+  
+  cat("\n\n_____________________________\n\n")
+  
+  cat("\\newpage")
+}
+```
