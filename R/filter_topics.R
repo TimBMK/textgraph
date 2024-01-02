@@ -4,7 +4,7 @@
 #'  numerical vector of topics to be retained. Note that this also updates the metrics
 #'  where applicable (see Details).
 #' 
-#' @param textgraph_object A textgraph_topics object, as provided by the `calculate_topics()` function.
+#' @param textgraph_topics A textgraph_topics object, as provided by the `calculate_topics()` function.
 #' @param topic_numbers A numerical vector containing the numbers of the topics to be retained.
 #' 
 #' @return A textgraph_topics object with updated contents and metrics.

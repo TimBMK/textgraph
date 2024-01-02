@@ -7,9 +7,9 @@
 filter_topics(textgraph_topics, topic_numbers)
 }
 \arguments{
-\item{topic_numbers}{A numerical vector containing the numbers of the topics to be retained.}
+\item{textgraph_topics}{A textgraph_topics object, as provided by the `calculate_topics()` function.}
 
-\item{textgraph_object}{A textgraph_topics object, as provided by the `calculate_topics()` function.}
+\item{topic_numbers}{A numerical vector containing the numbers of the topics to be retained.}
 }
 \value{
 A textgraph_topics object with updated contents and metrics.
