@@ -27,7 +27,14 @@
 #'
 #' @details The function performs topic clustering on the input text network, calculates
 #'  additional metrics based on the specified parameters, and returns a structured object
-#'  containing topics and metrics. 
+#'  containing topics and metrics. Returns a list with model metrics, a data frame with a topic
+#'  overview, a data frame with the entities associated with each topic, and (optionally) 
+#'  a data frame with the documents associated with each topic.
+#'  Note that, depending on the `cluster_function` used, the results may be non-deterministic
+#'  and dependant on a seed. Therefore, for algorithms like the suggested Leiden algorithm, it is
+#'  strongly encouraged to a) run the function several times with different/no random seeds to
+#'  ensure results are comparable across runs; and b) use a fixed random seed for reproducible 
+#'  results.
 #'  The Page Rank of entities serves as a measure of their
 #'  relative importance in a topic cluster. It can be calculated either globally with 
 #'  `page_rank_calculation = "global"`, as the Page Rank in the complete `text_network` (faster), 
@@ -222,6 +229,22 @@ calculate_topics <- function(text_network,
                     .by = topic) %>% 
       dplyr::arrange(topic, dplyr::desc(document_relevance))
   }
+  
+  # make topic overviews
+  topic_overview <- topics %>% 
+    dplyr::summarise(nr_entities = dplyr::n(), .by = topic) %>% 
+    dplyr::arrange(dplyr::desc(nr_entities))
+  
+  if (!is.null(documents)) {
+    document_overview <- document_data %>% 
+      dplyr::summarise(document_occurrences = dplyr::n(), 
+                       .by = topic)
+    
+    topic_overview <- topic_overview %>% 
+      dplyr::left_join(document_overview, by = "topic") %>% 
+      dplyr::arrange(dplyr::desc(document_occurrences)) # overwrite ordering
+    
+  }
 
   # topic_object <- topics %>% 
   #   split(.$topic)%>% 
@@ -261,6 +284,7 @@ calculate_topics <- function(text_network,
   # Finalize Topic Object
   textgraph_topic <- list(    
     metrics = metrics,
+    topics = topic_overview,
     entities = topics %>% 
       dplyr::arrange(topic, dplyr::desc(page_rank))
   )
