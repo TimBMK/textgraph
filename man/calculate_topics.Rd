@@ -21,7 +21,9 @@ calculate_topics(
 \item{text_network}{An igraph graph representing the text network.}
 
 \item{documents}{Optional, a data frame containing document information. Expects one row per token. NULL to skip.
-Returns additional information on topic-relevant documents if provided.}
+Returns additional information on topic-relevant documents if provided. `document_tokens` and `document_ids`
+variables are required. Additional variables (such as document meta data) can be passed. Note, however,
+that these should contain no more than one unique value per document (see examples).}
 
 \item{document_tokens}{String; The column name in documents containing the document tokens.}
 
@@ -92,7 +94,9 @@ topics <- calculate_topics(text_network,
 # optionally, we can add a dataframe with document information to get relevant documents
 data("de_pol_twitter")
 topics <- calculate_topics(text_network,
-                          documents = de_pol_twitter,
+                          documents = de_pol_twitter \%>\% # when passing document data...
+                              dplyr::select(doc_id, lemma, # ...we reduce the columns to the required variables... 
+                                            created_at, author_id), #...and document (not token!) metadata
                           document_tokens = "lemma",
                           document_ids = "doc_id",
                           negative_edge_weights = TRUE,

@@ -6,7 +6,9 @@
 #'
 #' @param text_network An igraph graph representing the text network.
 #' @param documents Optional, a data frame containing document information. Expects one row per token. NULL to skip.
-#'  Returns additional information on topic-relevant documents if provided.
+#'  Returns additional information on topic-relevant documents if provided. `document_tokens` and `document_ids`
+#'  variables are required. Additional variables (such as document meta data) can be passed. Note, however,
+#'  that these should contain no more than one unique value per document (see examples). 
 #' @param document_tokens String; The column name in documents containing the document tokens.
 #' @param document_ids String; The column name in documents containing document identifiers.
 #' @param negative_edge_weights Logical indicating whether to consider only edges
@@ -62,7 +64,9 @@
 #' # optionally, we can add a dataframe with document information to get relevant documents
 #' data("de_pol_twitter")
 #'topics <- calculate_topics(text_network,
-#'                           documents = de_pol_twitter,
+#'                           documents = de_pol_twitter %>% # when passing document data...
+#'                               dplyr::select(doc_id, lemma, # ...we reduce the columns to the required variables... 
+#'                                             created_at, author_id), #...and document (not token!) metadata
 #'                           document_tokens = "lemma",
 #'                           document_ids = "doc_id",
 #'                           negative_edge_weights = TRUE,
@@ -228,6 +232,12 @@ calculate_topics <- function(text_network,
                                                          to = c(0,100)),
                     .by = topic) %>% 
       dplyr::arrange(topic, dplyr::desc(document_relevance))
+    
+    document_data <- document_data %>% 
+      dplyr::left_join(documents %>% 
+                         dplyr::select(!(!!as.name(document_tokens))) %>% 
+                         dplyr::distinct(!!as.name(document_ids), 
+                                         .keep_all = TRUE), by = document_ids)
   }
   
   # make topic overviews
