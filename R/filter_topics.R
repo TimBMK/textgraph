@@ -21,7 +21,7 @@
 #' }
 #' 
 #' @importFrom dplyr "%>%"
-#' @importFrom dplyr filter distinct summarise
+#' @importFrom dplyr filter distinct summarise pull
 #' @importFrom purrr map
 #' @importFrom stats median
 #' 
@@ -61,11 +61,11 @@ filter_topics <- function(textgraph_topics,
   
   metrics$mean_topic_entities <- res$entities %>% 
     dplyr::summarise(n = n(), .by = topic) %>% 
-    pull(n) %>% mean()
+    dplyr::pull(n) %>% mean()
   
   metrics$median_topic_entities <- res$entities %>% 
     dplyr::summarise(n = n(), .by = topic) %>% 
-    pull(n) %>% stats::median()
+    dplyr::pull(n) %>% stats::median()
   
   res <- c(list(metrics = metrics), res) # add metrics as first object
   
