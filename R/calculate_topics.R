@@ -79,6 +79,7 @@
 #'
 #' @importFrom igraph is_igraph subgraph.edges induced_subgraph page_rank modularity sizes cluster_leiden V E
 #' @importFrom dplyr mutate left_join summarise arrange desc distinct n
+#' @importFrom dplyr "%>%"
 #' @importFrom tibble tibble
 #' @importFrom furrr future_map 
 #' @importFrom data.table rbindlist
@@ -191,7 +192,7 @@ calculate_topics <- function(text_network,
     nr_topics = nr_topics,
     quality = quality,
     modularity = modularity,
-    mean_topics_entities = mean_topic_entities,
+    mean_topic_entities = mean_topic_entities,
     median_topic_entities = median_topic_entities,
     page_rank_calculation = page_rank_calculation
   )
