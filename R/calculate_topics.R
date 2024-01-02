@@ -66,7 +66,7 @@
 #'topics <- calculate_topics(text_network,
 #'                           documents = de_pol_twitter %>% # when passing document data...
 #'                               dplyr::select(doc_id, lemma, # ...we reduce the columns to the required variables... 
-#'                                             created_at, author_id), #...and document (not token!) metadata
+#'                                             created_at, author_id, ministry_name), #...and document (not token!) metadata
 #'                           document_tokens = "lemma",
 #'                           document_ids = "doc_id",
 #'                           negative_edge_weights = TRUE,
