@@ -38,10 +38,16 @@ filter_topics <- function(textgraph_topics,
     stop("'topics' must be provided as a numerical vector of topic numbers.")
   }
   
-  
+  # Temporarily remove metrics and cluster object
   metrics <- textgraph_topics$metrics # safe metrics for later
   
   res <- textgraph_topics[setdiff(names(textgraph_topics), "metrics")] # temporarily drop the metrics
+  
+  if ("igraph_cluster" %in% names(textgraph_topics)) {
+    igraph_cluster <- textgraph_topics$igraph_cluster
+    
+    res <- res[setdiff(names(res), "igraph_cluster")] # temporarily drop the cluster object
+  }
   
   
   # filter topics
@@ -61,7 +67,11 @@ filter_topics <- function(textgraph_topics,
     dplyr::summarise(n = n(), .by = topic) %>% 
     pull(n) %>% stats::median()
   
-  res <- c(list(metrics = metrics), res)
+  res <- c(list(metrics = metrics), res) # add metrics as first object
+  
+  if ("igraph_cluster" %in% names(textgraph_topics)) { # add cluster object
+    res$igraph_cluster <- igraph_cluster 
+  }
   
   class(res) <- "textgraph_topics"
   
