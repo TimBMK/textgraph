@@ -34,7 +34,7 @@ with positive weights. If the chosen clustering algorithm does not support negat
 set this to `FALSE`.}
 
 \item{page_rank_calculation}{Character specifying the type of Page Rank calculation.
-Options are "global" for global network Page Rank, or 
+Options are "global" for global network Page Rank, or
 "cluster" for calculating the Page Rank of the entities within each topic cluster.}
 
 \item{cluster_function}{The clustering function to use. Can be any igraph clustering function.
@@ -48,7 +48,7 @@ Can be helpful for additional checks. See `help(igraph::membership)`}
 \item{verbose}{Logical indicating whether to print clustering metrics.}
 }
 \value{
-A list object of class "textgraph_topics" containing topic entities, 
+A list object of class "textgraph_topics" containing topic entities,
   document data (optional), clustering metrics, and the cluster object (optional).
 }
 \description{
@@ -60,23 +60,23 @@ additional metrics such as Page Rank, cluster metrics, and more.
 The function performs topic clustering on the input text network, calculates
  additional metrics based on the specified parameters, and returns a structured object
  containing topics and metrics. Returns a list with model metrics, a data frame with a topic
- overview, a data frame with the entities associated with each topic, and (optionally) 
+ overview, a data frame with the entities associated with each topic, and (optionally)
  a data frame with the documents associated with each topic.
  Note that, depending on the `cluster_function` used, the results may be non-deterministic
  and dependant on a seed. Therefore, for algorithms like the suggested Leiden algorithm, it is
  strongly encouraged to a) run the function several times with different/no random seeds to
- ensure results are comparable across runs; and b) use a fixed random seed for reproducible 
+ ensure results are comparable across runs; and b) use a fixed random seed for reproducible
  results.
  The Page Rank of entities serves as a measure of their
- relative importance in a topic cluster. It can be calculated either globally with 
- `page_rank_calculation = "global"`, as the Page Rank in the complete `text_network` (faster), 
- or locally for each cluster with `page_rank_calculation = "global"`, where a 
- subgraph is induced containing only the nodes of the given cluster. This takes longer, 
+ relative importance in a topic cluster. It can be calculated either globally with
+ `page_rank_calculation = "global"`, as the Page Rank in the complete `text_network` (faster),
+ or locally for each cluster with `page_rank_calculation = "global"`, where a
+ subgraph is induced containing only the nodes of the given cluster. This takes longer,
  but can provide a better measure of a term's relevance within a topic. For the latter option,
  multithreading is supported if a plan was set up with `future::plan()`.
  The `document_relevance` calculated for the optionally provided documents indicates
- how relevant a document is to a given topics. It is calculated as the re-scaled sum of 
- all topic-relevant entities' Page Rank in the document multiplied by their tf-idf 
+ how relevant a document is to a given topics. It is calculated as the re-scaled sum of
+ all topic-relevant entities' Page Rank in the document multiplied by their tf-idf
  (Term Frequency - Inverse Document Frequency).
 }
 \examples{
@@ -95,8 +95,8 @@ topics <- calculate_topics(text_network,
 data("de_pol_twitter")
 topics <- calculate_topics(text_network,
                           documents = de_pol_twitter \%>\% # when passing document data...
-                              dplyr::select(doc_id, lemma, # ...we reduce the columns to the required variables... 
-                                            created_at, author_id, ministry_name), #...and document (not token!) metadata
+                              dplyr::select(doc_id, lemma, # ...we reduce the columns to the required variables...
+                                            created_at, author_id, party, tweet_url), #...and document (not token!) metadata
                           document_tokens = "lemma",
                           document_ids = "doc_id",
                           negative_edge_weights = TRUE,
