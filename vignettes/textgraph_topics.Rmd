@@ -1,0 +1,77 @@
+---
+title: "textgraph_topics"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{textgraph_topics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(textgraph)
+library(tidyverse)
+```
+
+```{r}
+data("de_pol_twitter")
+```
+
+
+```{r}
+text_network <- make_textnetwork(data = de_pol_twitter,
+                                document = "doc_id",
+                                feature = "lemma",
+                                pmi_weight = TRUE,
+                                as_data_frame = FALSE,
+                                keep_negative_weights = TRUE)
+```
+
+```{r}
+
+main_parties <- de_pol_twitter %>% # we are mostly interested in the seven parties with the most tweets, which, unsurprisingly, are Germany's biggest parties
+  distinct(doc_id, party) %>% 
+  summarise(n = n(),.by = party) %>% 
+  filter(!is.na(party)) %>% 
+  slice_max(n, n = 7) %>% pull(party)
+
+topic_documents <- de_pol_twitter %>% # when passing document data...
+  select(doc_id, lemma, # ...we reduce the columns to the required variables...
+         created_at, author_id, party, tweet_url) %>%  #...and document (not token!) metadata
+  mutate(party = case_when(!(party %in% main_parties) ~ "other", # for all parties not among the big 7, we set the variable to "other"
+                           .default = party))
+
+topics <- calculate_topics(text_network,
+                          documents = topic_documents,
+                          document_tokens = "lemma",
+                          document_ids = "doc_id",
+                          negative_edge_weights = TRUE,
+                          page_rank_calculation = "global",
+                          cluster_function = cluster_leiden,
+                          objective_function = "CPM",
+                          keep_cluster_object = FALSE,
+                          verbose = TRUE)
+```
+
+```{r}
+explore_topics(textgraph_topics = topics,
+               topic_threshold = 0.01,
+               n_top_terms = 10,
+               n_top_docs = 5,
+               time_var = "created_at", # we plot over time...
+               floor_time_var_by = "days", # ...by days
+               split_var = "party", # we want information for each party
+               text_var = "tweet_url", # instead of the text, we display the tweet URL
+               document_ids = "doc_id",
+               output_file = "topic_exploration.html")
+
+```
+
+
+The file is written to the current working directory (or a path specified under `output_file` and can be accessed via a web browser.
