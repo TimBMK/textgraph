@@ -17,7 +17,7 @@
 #' An adjusted version of https://github.com/alberto-valdeolivas/RandomWalkRestartMH/blob/master/R/RWRandMatrices.R
 #'  including a failsafe for values in the proximity vectors reaching (-)Inf
 #'
-#' @importFrom RandomWalkRestartMH isMultiplex get.seed.scoresMultiplex geometric.mean
+#' @importFrom RandomWalkRestartMH isMultiplex
 #'
 #' @keywords internal
 Random.Walk.Restart.Multiplex.failsafe <- function(x, MultiplexObject, Seeds,
@@ -79,7 +79,7 @@ Random.Walk.Restart.Multiplex.failsafe <- function(x, MultiplexObject, Seeds,
   iter <- 1
 
   ## We compute the scores for the different seeds.
-  Seeds_Score <- RandomWalkRestartMH:::get.seed.scoresMultiplex(Seeds,L,tau)
+  Seeds_Score <- get.seed.scoresMultiplex(Seeds,L,tau)
 
   ## We define the prox_vector(The vector we will move after the first RWR
   ## iteration. We start from The seed. We have to take in account
@@ -118,7 +118,7 @@ Random.Walk.Restart.Multiplex.failsafe <- function(x, MultiplexObject, Seeds,
   rank_global$NodeNames <- gsub("_1", "", row.names(prox_vector)[seq_len(N)])
 
   if (MeanType=="Geometric"){
-    rank_global$Score <- RandomWalkRestartMH:::geometric.mean(as.vector(prox_vector[,1]),L,N)
+    rank_global$Score <- geometric.mean(as.vector(prox_vector[,1]),L,N)
   } else {
     if (MeanType=="Arithmetic") {
       rank_global$Score <- regular.mean(as.vector(prox_vector[,1]),L,N)

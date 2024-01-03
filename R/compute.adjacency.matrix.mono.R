@@ -6,8 +6,8 @@
 #'
 #' @details
 #' An adjusted version of the compute.adjacency.matrix() function from
-#'  the RandomWalkRestartMH package, making monoplex network preparation
-#'  more efficient by dropping unnecessary overhead
+#'  the RandomWalkRestartMH package (https://github.com/alberto-valdeolivas/RandomWalkRestartMH/),
+#'  making monoplex network preparation more efficient by dropping unnecessary overhead.
 #'  Specifically, it vastly reduces the use of RAM (which would require
 #'  manual flushing with gc() every time) by dropping everything connected
 #'  to the line "offdiag <- (delta/(L-1))*Idem_Matrix" which is not needed
