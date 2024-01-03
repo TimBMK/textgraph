@@ -151,49 +151,55 @@ for (topic in topics$topic) {
       cat("\n###", tab)
       
       tab_documents <- topic_documents %>% dplyr::filter(tab_indicator == tab) %>% # filter tab specific documents
-      dplyr::slice_max(order_by = document_relevance, # and get top docs
-                       n = n_top_docs, with_ties = FALSE) 
+        dplyr::slice_max(order_by = document_relevance, # and get top docs
+                         n = n_top_docs, with_ties = FALSE) 
       
-      for (i in 1:(tab_documents %>% nrow())) { # print documents
+      if (nrow(tab_documents) == 0) { # check if there are available documents
+        cat("\n\n*No Documents to display.*\n\n")
+      } else{
         
-        cat("\n#### Document", i, "\n")
-        
-        cat("\n*Relevance of Document:", 
-            tab_documents %>% dplyr::pull(document_relevance) %>% .[[i]],
-            "*")
-        
-        cat("\n\n")
-        
-        cat("\n*Entities:",
-            tab_documents %>% dplyr::pull(entities) %>% .[[i]],
-            "*")
-        
-        cat("\n\n")
-        
-        if (!is.null(time_var)){
-          cat("*", paste0(time_var,":"),
-              tab_documents %>% dplyr::pull(!!as.name(time_var)) %>% .[[i]],
+        for (i in 1:(tab_documents %>% nrow())) { # print documents
+          
+          cat("\n#### Document", i, "\n")
+          
+          cat("\n*Relevance of Document:", 
+              tab_documents %>% dplyr::pull(document_relevance) %>% .[[i]],
               "*")
           
           cat("\n\n")
-        }
-        
-        if (!is.null(document_ids)){
-          cat(paste0("*",document_ids, ":"),
-              tab_documents %>% dplyr::pull(!!as.name(document_ids)) %>% .[[i]],
+          
+          cat("\n*Entities:",
+              tab_documents %>% dplyr::pull(entities) %>% .[[i]],
               "*")
           
           cat("\n\n")
+          
+          if (!is.null(time_var)){
+            cat(paste0("*", time_var,":"),
+                tab_documents %>% dplyr::pull(!!as.name(time_var)) %>% 
+                  .[[i]] %>% as.character(),  # as.character() prevents scrambled output
+                "*")
+            
+            cat("\n\n")
+          }
+          
+          if (!is.null(document_ids)){
+            cat(paste0("*",document_ids, ":"),
+                tab_documents %>% dplyr::pull(!!as.name(document_ids)) %>% .[[i]],
+                "*")
+            
+            cat("\n\n")
+          }
+          
+          if (!is.null(text_var)){
+            cat("**Text**\n\n")
+            cat(">", tab_documents %>% dplyr::pull(!!as.name(text_var)) %>% 
+                  .[[i]] %>% stringr::str_remove_all("[\n\t]") )
+          }
+          
+          cat("\n\n")
+          cat("\n\n")
         }
-        
-        if (!is.null(text_var)){
-          cat("**Text**\n\n")
-          cat(">", tab_documents %>% dplyr::pull(!!as.name(text_var)) %>% 
-                .[[i]] %>% stringr::str_remove_all("[\n\t]") )
-        }
-        
-        cat("\n\n")
-        cat("\n\n")
       }
       
     }
