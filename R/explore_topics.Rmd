@@ -1,3 +1,18 @@
+---
+title: "Textgraph Topic Exploration"
+output: html_document
+params:
+  textgraph_topics: NULL
+  topic_threshold: NULL
+  n_top_terms: NULL
+  n_top_docs: NULL
+  time_var: NULL
+  floor_time_var_by: NULL
+  split_var: NULL
+  text_var: NULL
+  document_ids: NULL
+---
+
 
 ```{r preparation, echo=FALSE, warning=FALSE, comment=""}
 
@@ -7,15 +22,17 @@ if (class(textgraph_topics) != "textgraph_topics") {
 
 prefilter_metrics <- textgraph_topics$metrics # safe metrics
 
-if ("documents" %in% textgraph_topics) { 
+if ("documents" %in% names(textgraph_topics)) { 
   topics <- textgraph_topics$documents %>% 
     dplyr::summarise(n = dplyr::n(), .by = topic) %>% 
     dplyr::mutate(percentage = n / sum(n)) %>% 
-    dplyr::filter(percentage >= topic_threshold) 
+    dplyr::filter(percentage >= topic_threshold) %>% 
+    dplyr::arrange(dplyr::desc(percentage)) # ordering of the topics for printout
 } else { # if no documents are available, use entity occurrence for threshold 
   topics <- textgraph_topics$topics %>% 
     dplyr::mutate(percentage = nr_entities / sum(nr_entities)) %>% 
-    dplyr::filter(percentage >= topic_threshold) 
+    dplyr::filter(percentage >= topic_threshold) %>% 
+    dplyr::arrange(dplyr::desc(percentage)) # ordering of the topics for printout
 }
 
 textgraph_topics <- filter_topics(textgraph_topics, # reduce to topics above threshold
@@ -27,21 +44,24 @@ if (!is.null(floor_time_var_by)) { # floor the time variable if needed
                                                               unit = floor_time_var_by))
 }
 
-
-
+if (!is.null(split_var)) {
+  textgraph_topics$documents[[split_var]] <- textgraph_topics$documents[[split_var]] %>% 
+    tidyr::replace_na("none") # replace NAs in split var - prevents error when plotting only NA values (potential ggplot2 bug - see https://github.com/tidyverse/ggplot2/issues/5623)
+}
 ```
 
 
 ```{r printout, echo=FALSE, results='asis', warning=FALSE, message=FALSE}
-cat("\n*Algorithm:", prefilter_metrics$algorithm, "*",
-    "\n*Page Rank Calculation:", prefilter_metrics$page_rank_calculation, "*\n")
+cat("\n**Algorithm**:*", prefilter_metrics$algorithm, "*",
+    "\n\n",
+    "\n**Page Rank Calculation**:*", prefilter_metrics$page_rank_calculation, "*\n")
 
 cat("\n\nOnly Printing Topics occurring in at least", topic_threshold, "of Documents:",  
     textgraph_topics$metrics$nr_topics, 
     "out of", 
     prefilter_metrics$nr_topics, "Topics. \n\n")
 
-if (!("documents" %in% textgraph_topics)){
+if (!("documents" %in% names(textgraph_topics))){
   cat("*Note*: No documents were provided. Topic proportions are calculated as number of",
       "entities in a topic. Passing document data to `calculate_topics()`",
       "provides document-related topic exploration.")
@@ -57,12 +77,12 @@ for (topic in topics$topic) {
       "\n## Topic Proportion:",
       topics %>% 
           dplyr::filter(topic == {{topic}}) %>% 
-          dplyr::pull(percentage) %>% scales::percent(),
+          dplyr::pull(percentage) %>% scales::percent(accuracy = 0.01),
       "\n\n"
       )
   
   
-  if ("documents" %in% textgraph_topics) { # additional plots and doc vars if docs are available
+  if ("documents" %in% names(textgraph_topics)) { # additional plots and doc vars if docs are available
     
     if (!is.null(time_var) & is.null(split_var)){ # over time only
       plot <- textgraph_topics$documents %>% 
@@ -111,49 +131,73 @@ for (topic in topics$topic) {
     cat("\n\n_____________________________\n\n")
     
     
-    top_topic_documents <- textgraph_topics$documents %>% 
-      dplyr::filter(topic == {{topic}}) %>% 
-      dplyr::slice_max(order_by = document_relevance, 
-                       n = n_top_docs) 
+    topic_documents <- textgraph_topics$documents %>% # get documents for the specific topic
+      dplyr::filter(topic == {{topic}}) 
     
-    for (i in 1:(top_topic_documents %>% nrow())) {
-      
-      cat("\n*Relevance of Document:", 
-          top_topic_documents %>% dplyr::pull(document_relevance) %>% .[[i]],
-          "*")
-      
-      cat("\nEntities:",
-          top_topic_documents %>% dplyr::pull(entities) %>% .[[i]])
-      
-      cat("\n\n")
-      
-      if (!is.null(split_var)){
-        cat(paste0("*", split_var,":"),
-            top_topic_documents %>% dplyr::pull(!!as.name(split_var)) %>% .[[i]],
-            "*")
-        
-        cat("\n\n")
-      }
-      
-      if (!is.null(time_var)){
-        cat(paste0(time_var,":"),
-            top_topic_documents %>% dplyr::pull(!!as.name(time_var)) %>% .[[i]])
-        
-        cat("\n\n")
-      }
-      
-      if (!is.null(document_ids)){
-        cat(paste0("*",document_id, ":"),
-            top_topic_documents %>% dplyr::pull(!!as.name(document_ids)) %>% .[[i]],
-            "*")
-      }
-      
-      if (!is.null(text_var)){
-        cat("*Text*\n")
-        top_topic_documents %>% dplyr::pull(!!as.name(text_var)) %>% .[[i]] %>% 
-          stringr::str_remove_all("[\n\t]")  %>% cat()
-      }
+    
+    cat("## Documents{.tabset}\n") # make tabset rider
+    
+    if (is.null(split_var)) { # if no split var, documents in a single tab
+      tabset <- c("all")
+      topic_documents <- topic_documents %>% 
+        dplyr::mutate(tab_indicator = "all") # dummy variable
+    } else { # else make a tab for each split_var value
+      tabset <- unique(textgraph_topics$documents[[split_var]])
+      topic_documents <- topic_documents %>% 
+        dplyr::mutate(tab_indicator = !!as.name(split_var)) # split_var as tab
     }
+    
+    for (tab in tabset){
+      cat("\n###", tab)
+      
+      tab_documents <- topic_documents %>% dplyr::filter(tab_indicator == tab) %>% # filter tab specific documents
+      dplyr::slice_max(order_by = document_relevance, # and get top docs
+                       n = n_top_docs, with_ties = FALSE) 
+      
+      for (i in 1:(tab_documents %>% nrow())) { # print documents
+        
+        cat("\n#### Document", i, "\n")
+        
+        cat("\n*Relevance of Document:", 
+            tab_documents %>% dplyr::pull(document_relevance) %>% .[[i]],
+            "*")
+        
+        cat("\n\n")
+        
+        cat("\n*Entities:",
+            tab_documents %>% dplyr::pull(entities) %>% .[[i]],
+            "*")
+        
+        cat("\n\n")
+        
+        if (!is.null(time_var)){
+          cat("*", paste0(time_var,":"),
+              tab_documents %>% dplyr::pull(!!as.name(time_var)) %>% .[[i]],
+              "*")
+          
+          cat("\n\n")
+        }
+        
+        if (!is.null(document_ids)){
+          cat(paste0("*",document_ids, ":"),
+              tab_documents %>% dplyr::pull(!!as.name(document_ids)) %>% .[[i]],
+              "*")
+          
+          cat("\n\n")
+        }
+        
+        if (!is.null(text_var)){
+          cat("**Text**\n\n")
+          cat(">", tab_documents %>% dplyr::pull(!!as.name(text_var)) %>% 
+                .[[i]] %>% stringr::str_remove_all("[\n\t]") )
+        }
+        
+        cat("\n\n")
+        cat("\n\n")
+      }
+      
+    }
+    
   }
   
   cat("\n\n_____________________________\n\n")

@@ -3,13 +3,14 @@
 #' This function allows to explore a textgraph_topics object through a markdown-rendered
 #'  html document.
 #'  
-#'  @param textgraph_object A textgraph_topics object, as provided by the `calculate_topics()` function.
+#'  @param textgraph_topics A textgraph_topics object, as provided by the `calculate_topics()` function.
 #'  @param topic_threshold Numerical; optional threshold how large a topic needs to be before getting rendered in percent.
 #'                          If the `textgraph_object` contains document data, the minimum document occurrences 
 #'                          of a topic as the percentage of all documents. If it does not contain document data,
 #'                          the number of entities in a topic as percentage of all entities in the network. Set to 0 to skip.
 #'  @param n_top_terms Numerical; number of terms to print out per topic (descending by Page Rank)
-#'  @param n_top_docs Numerical; number of documents to print out per topic (descending by Document Relevance)
+#'  @param n_top_docs Numerical; number of documents to print out per topic (descending by Document Relevance). If a 
+#'                     `split_var` is specified, this number of documents is returned for each of its values.
 #'  @param time_var Optional string; name of a variable in the document section of the `textgraph_object` 
 #'                    containing time-related metadata of documents (e.g. publication date). If provided,
 #'                    allows to plot topic occurrence over time.
@@ -36,6 +37,7 @@
 #' @examples
 #' \dontrun{
 #' data("de_pol_twitter")
+#' 
 #' topics <- calculate_topics(text_network,
 #'                           documents = de_pol_twitter %>% #' when passing document data...
 #'                               dplyr::select(doc_id, lemma, #' ...we reduce the columns to the required variables...
@@ -48,7 +50,8 @@
 #'                           objective_function = "CPM",
 #'                           keep_cluster_object = FALSE,
 #'                           verbose = TRUE)
-#' explore_topics(topics,
+#'                           
+#' explore_topics(textgraph_topics = topics,
 #'                topic_threshold = 0.01,
 #'                n_top_terms = 10,
 #'                n_top_docs = 5,
@@ -61,10 +64,11 @@
 #' }
 #' 
 #' @importFrom dplyr "%>%"
-#' @importFrom dplyr summarise mutate filter slice_max pull
+#' @importFrom dplyr summarise mutate filter slice_max pull arrange desc
 #' @importFrom ggplot2 ggplot aes geom_line theme_bw labs
 #' @importFrom lubridate floor_date
 #' @importFrom scales percent
+#' @importFrom tidyr replace_na
 #' 
 #' @export
 
@@ -82,21 +86,22 @@ explore_topics <- function(
     output_file,
     ...
 ){
-  xfun::Rscript_call(
-    rmarkdown::render,
-    list(input = file.path(path.package("textgraph"), "R", "explore_topics.Rmd"),
-         params = list(textgraph_topics = textgraph_topics,
-                       topic_threshold = topic_threshold,
-                       n_top_terms = n_top_terms,
-                       n_top_docs = n_top_docs,
-                       time_var = time_var,
-                       floor_time_var_by = floor_time_var_by,
-                       split_var = split_var,
-                       text_var = text_var,
-                       document_ids = document_ids),
-         output_format = "html_document",
-         output_file = output_file,
-         ...)
+  rmarkdown::render(
+    input = file.path(path.package("textgraph"), "R", "explore_topics.Rmd"),
+    params = list(textgraph_topics = textgraph_topics,
+                  topic_threshold = topic_threshold,
+                  n_top_terms = n_top_terms,
+                  n_top_docs = n_top_docs,
+                  time_var = time_var,
+                  floor_time_var_by = floor_time_var_by,
+                  split_var = split_var,
+                  text_var = text_var,
+                  document_ids = document_ids),
+    output_format = "html_document",
+    output_file = output_file,
+    output_dir = getwd(), # current WD as output dir. Gets overwritten if output_file contains a path
+    envir = new.env(),
+    ...
   )
 }
 
