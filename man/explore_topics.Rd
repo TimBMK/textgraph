@@ -48,10 +48,11 @@ This function allows to explore a textgraph_topics object through a markdown-ren
  @param document_ids Optional string; name of a variable in the document section of the `textgraph_object` 
                    containing the ID of the document. If provided, will print out the ID of the `n_top_docs`
                    of each topic.
- @param output_file Name (and optionally path) of the html file to be written.
+ @param output_file Name (and optionally path) of the html file to be written. If no path is specified, 
+                     the file will be written to the current working directory.
  @param ... Additional arguments passed to `rmarkdown::render()`
  
- @return Saves the output as html under the specified `output_file`.
+ @return Saves the output as html under the specified `output_file`, to be opened in a browser of your choice.
 }
 \examples{
 \dontrun{
