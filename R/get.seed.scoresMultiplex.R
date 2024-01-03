@@ -1,13 +1,13 @@
 #' Get Scores for the seeds of the multiplex network
 #'
-#' @param Seeds
-#' @param Number_Layers
-#' @param tau
+#' @param Seeds Seeds
+#' @param Number_Layers Layers
+#' @param tau tau
 #'
 #' @details An internal function from the RandomWalkRestartMH package, required for
 #'   the RWR calculations. Pulled from https://github.com/alberto-valdeolivas/RandomWalkRestartMH/blob/master/R/InternalFunctions.R
 #'
-#' @return
+#' @return Scores
 #' @keywords internal
 #'
 

@@ -1,13 +1,13 @@
 #' Calculate Geometric Mean
 #'
-#' @param Scores
-#' @param L
-#' @param N
+#' @param Scores Scores
+#' @param L L
+#' @param N N
 #'
 #' @details An internal function from the RandomWalkRestartMH package, required for
 #'   the RWR calculations. Pulled from https://github.com/alberto-valdeolivas/RandomWalkRestartMH/blob/master/R/InternalFunctions.R
 #'
-#' @return
+#' @return Score
 #' @keywords internal
 #'
 geometric.mean <- function(Scores, L, N) {
