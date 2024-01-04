@@ -78,7 +78,7 @@
 #' }
 #'
 #' @importFrom igraph is_igraph subgraph.edges induced_subgraph page_rank modularity sizes cluster_leiden V E
-#' @importFrom dplyr mutate left_join summarise arrange desc distinct n
+#' @importFrom dplyr mutate left_join summarise arrange desc distinct n across select_if
 #' @importFrom dplyr "%>%"
 #' @importFrom tibble tibble
 #' @importFrom furrr future_map
@@ -87,6 +87,7 @@
 #' @importFrom rlang arg_match
 #' @importFrom tidyr any_of
 #' @importFrom tidytext bind_tf_idf
+#' @importFrom tidyselect everything
 #' @importFrom scales rescale
 #'
 #' @export
@@ -119,7 +120,17 @@ calculate_topics <- function(text_network,
     if (!(document_ids %in% names(documents))) {
       stop(paste(document_ids, "not present in 'documents' object."))
     }
+
+    if (any(duplicated(documents[[document_ids]]))) {
+      warning("Duplicated Document IDs found. Coercing to unique IDs.")
+      documents <- documents %>% dplyr::distinct(!!as.name(document_ids),
+                                                 .keep_all = TRUE)
+    }
+
   }
+
+
+
   # Drop negatively weighted edges
   if (!(negative_edge_weights)){
     text_network <- igraph::subgraph.edges(text_network,
@@ -239,6 +250,25 @@ calculate_topics <- function(text_network,
                          dplyr::select(!(!!as.name(document_tokens))) %>%
                          dplyr::distinct(!!as.name(document_ids),
                                          .keep_all = TRUE), by = document_ids)
+
+    missing_data <- document_data %>% # collect missing meta data
+      dplyr::select(!c(topic, entities, document_relevance)) %>%
+      dplyr::select_if(~ any(is.na(.))) %>%
+      dplyr::summarise(dplyr::across(tidyselect::everything(),
+                                     ~ (sum(is.na(.)) / n()))) %>%
+      dplyr::select_if(~ (. > 0))
+
+    if (nrow(missing_data) > 0) {
+      warning("Missing data in variables ",
+              paste(names(missing_data), collapse = ", "),
+              ".\n",
+              paste(names(missing_data %>%
+                            dplyr::select_if(~ (. > 0.1))),
+                    collapse = ", "),
+              " miss more than 10% of data.\n",
+              "Did you provide the correct 'document' data?")
+    }
+
   }
 
   # make topic overviews
