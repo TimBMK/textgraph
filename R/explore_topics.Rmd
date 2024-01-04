@@ -52,9 +52,9 @@ if (!is.null(split_var)) {
 
 
 ```{r printout, echo=FALSE, results='asis', warning=FALSE, message=FALSE}
-cat("\n**Algorithm**:*", prefilter_metrics$algorithm, "*",
+cat("\n**Algorithm**:", paste0("*", prefilter_metrics$algorithm, "*"),
     "\n\n",
-    "\n**Page Rank Calculation**:*", prefilter_metrics$page_rank_calculation, "*\n")
+    "\n**Page Rank Calculation**:" paste0("*", prefilter_metrics$page_rank_calculation, "*\n"))
 
 cat("\n\nOnly Printing Topics occurring in at least", topic_threshold, "of Documents:",  
     textgraph_topics$metrics$nr_topics, 
