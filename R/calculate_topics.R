@@ -121,12 +121,6 @@ calculate_topics <- function(text_network,
       stop(paste(document_ids, "not present in 'documents' object."))
     }
 
-    if (any(duplicated(documents[[document_ids]]))) {
-      warning("Duplicated Document IDs found. Coercing to unique IDs.")
-      documents <- documents %>% dplyr::distinct(!!as.name(document_ids),
-                                                 .keep_all = TRUE)
-    }
-
   }
 
 
