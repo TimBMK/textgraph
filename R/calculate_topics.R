@@ -193,13 +193,23 @@ calculate_topics <- function(text_network,
                                       return(error_message$message)})
 
   metrics <- list(
-    algorithm = algorithm,
-    nr_topics = nr_topics,
-    quality = quality,
-    modularity = modularity,
-    mean_topic_entities = mean_topic_entities,
-    median_topic_entities = median_topic_entities,
-    page_rank_calculation = page_rank_calculation
+    algorithm = algorithm)
+
+  params <- list(...) # get additional parameters
+
+  if (length(params) > 0) {
+     metrics <- c(metrics, params)
+  }
+
+
+  metrics <- c(metrics,
+               list(
+                 nr_topics = nr_topics,
+                 quality = quality,
+                 modularity = modularity,
+                 page_rank_calculation = page_rank_calculation,
+                 mean_topic_entities = mean_topic_entities,
+                 median_topic_entities = median_topic_entities)
   )
 
   if (verbose) {
@@ -208,10 +218,9 @@ calculate_topics <- function(text_network,
       "\nNumber of Topics:", nr_topics,
       "\nModularity:", modularity,
       "\nQuality:", quality,
-      "\nMean Number of Entities per Topic:", mean_topic_entities,
-      "\nMedian Number of Entities per Topic:", median_topic_entities,
       "\nPage Rank Calculation:", page_rank_calculation,
-      "\n"
+      "\nMean Number of Entities per Topic:", mean_topic_entities,
+      "\nMedian Number of Entities per Topic:", median_topic_entities
     ))
   }
 
@@ -279,7 +288,28 @@ calculate_topics <- function(text_network,
       dplyr::left_join(document_overview, by = "topic") %>%
       dplyr::arrange(dplyr::desc(document_occurrences)) # overwrite ordering
 
+    # additional metrics
+    mean_document_occurrences <- mean(topic_overview$document_occurrences)
+
+    median_document_occurrences <- stats::median(topic_overview$document_occurrences)
+
+    metrics$mean_document_occurrences <- mean_document_occurrences
+
+    metrics$median_document_occurrences <- median_document_occurrences
+
   }
+
+  if (verbose) {
+    if (!is.null(documents)) {
+        cat(paste(
+          "\nMean Number of Documents per Topic:", mean_document_occurrences,
+          "\nMedian Number of Documents per Topic:", median_document_occurrences
+        ))
+    }
+    cat("\n")
+  }
+
+
 
   # topic_object <- topics %>%
   #   split(.$topic)%>%

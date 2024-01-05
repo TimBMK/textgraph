@@ -56,6 +56,28 @@ cat("\n**Algorithm**:", paste0("*", prefilter_metrics$algorithm, "*"),
     "\n\n",
     "\n**Page Rank Calculation**:", paste0("*", prefilter_metrics$page_rank_calculation, "*\n"))
 
+additional_parameters <- # print additional parameters originally passed via "..."
+  prefilter_metrics[!(
+    names(prefilter_metrics) %in% c(
+      "algorithm",
+      "nr_topics",
+      "quality",
+      "modularity",
+      "page_rank_calculation",
+      "mean_topic_entities",
+      "median_topic_entities",
+      "mean_document_occurrences",
+      "median_document_occurrences"
+    )
+  )]
+
+if (length(additional_parameters > 0)){
+  cat("\n**Additional Paramters**:\n\n")
+  for (param in names(additional_parameters)) {
+    cat(paste0("*", param, ": ", additional_parameters[[param]], "*\n\n"))
+  }
+}
+
 cat("\n\nOnly Printing Topics occurring in at least", topic_threshold, "of Documents:",  
     textgraph_topics$metrics$nr_topics, 
     "out of", 
