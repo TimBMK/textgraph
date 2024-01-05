@@ -70,7 +70,10 @@ if (!("documents" %in% names(textgraph_topics))){
 for (topic in topics$topic) {
   cat("\n\n# Topic:", 
       topic,
-      "\n## Top Terms:",
+      "\n\n### Terms in Topic:", 
+      textgraph_topics$topics %>% dplyr::filter(topic == {{topic}}) %>% 
+        pull(nr_entities),
+      "\n\n## Top Terms:",
       textgraph_topics$entities %>% dplyr::filter(topic == {{topic}}) %>% 
         dplyr::slice_max(order_by = page_rank, n = n_top_terms) %>% 
         dplyr::pull(entity) %>% paste(collapse = ", "),
