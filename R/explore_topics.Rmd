@@ -78,7 +78,9 @@ if (length(additional_parameters > 0)){
   }
 }
 
-cat("\n\nOnly Printing Topics occurring in at least", topic_threshold, "of Documents:",  
+cat("\n\nOnly Printing Topics occurring in at least", 
+    scales::percent(topic_threshold, accuracy = topic_threshold*100),
+    "of Documents:",  
     textgraph_topics$metrics$nr_topics, 
     "out of", 
     prefilter_metrics$nr_topics, "Topics. \n\n")
