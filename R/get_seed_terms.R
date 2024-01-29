@@ -64,12 +64,6 @@ get_seed_terms <- function(data,
                            show_plots = FALSE,
                            save_plots = FALSE)
 {
-  require(dplyr)
-  require(purrr)
-  require(quanteda)
-  require(quanteda.textstats)
-  require(quanteda.textplots)
-
 
   rlang::arg_match(measure)
 
