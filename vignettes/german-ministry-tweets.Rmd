@@ -36,22 +36,23 @@ seed_terms <- get_seed_terms(de_pol_twitter,
                              threshold = 20,
                              show_plots = F,
                              save_plots = F)
+
+seed_terms
 ```
 
 ```{r}
 de_pol_twitter_reduced <- drop_quantile(data = de_pol_twitter,
-                                       tokens = "lemma",
+                                        tokens = "lemma",
                                         quantile = 0.1,
                                         ignore_case = FALSE, # in this case, "lemma" has already been set to lower case
-                                       group = "tag",
+                                        group = "tag",
                                         verbose = TRUE)
 ```
 
 ```{r}
 multiplex_text_network <- make_multiplex_objects(de_pol_twitter_reduced,
-                                                 vertex_a = "doc_id",
-                                                 vertex_b = "lemma",
-                                                 directed = FALSE,
+                                                 document = "doc_id",
+                                                 feature = "lemma",
                                                  pmi_weight = TRUE,
                                                  keep_negative_weights = TRUE,
                                                  network = NULL,
@@ -84,7 +85,7 @@ rwr_terms <- get_rwr_terms(multiplex_text_network,
                            reduce_to_means = TRUE,
                            keep_seed_terms = TRUE,
                            seedterm_value = NULL,
-                           progress = TRUE)
+                           progress = FALSE)
 ```
 
 
