@@ -57,8 +57,8 @@
 #'                           document_ids = NULL,
 #'                           negative_edge_weights = TRUE,
 #'                           page_rank_calculation = "global",
-#'                           cluster_function = cluster_leiden,
-#'                           objective_function = "CPM",
+#'                           cluster_function = igraph::cluster_leiden,
+#'                           objective_function = "CPM", # additional parameter of the cluster_function
 #'                           keep_cluster_object = FALSE,
 #'                           verbose = TRUE)
 #' # optionally, we can add a dataframe with document information to get relevant documents
@@ -71,8 +71,8 @@
 #'                           document_ids = "doc_id",
 #'                           negative_edge_weights = TRUE,
 #'                           page_rank_calculation = "global",
-#'                           cluster_function = cluster_leiden,
-#'                           objective_function = "CPM",
+#'                           cluster_function = igraph::cluster_leiden,
+#'                           objective_function = "CPM", # additional parameter of the cluster_function
 #'                           keep_cluster_object = FALSE,
 #'                           verbose = TRUE)
 #' }
