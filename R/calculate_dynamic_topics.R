@@ -79,7 +79,7 @@
 #' # optionally, we can add a dataframe with document information to get relevant documents
 #' dynamic_topics <- calculate_dynamic_topics(
 #'   data = de_pol_twitter %>%
-#'     dplyr::mutate(day = lubridate::floor_date(created_at, unit = "days")),
+#'     dplyr::mutate(day = lubridate::floor_date(created_at, unit = "days")), # make a "day" indicator to use as "timeframe"
 #'   document = "doc_id",
 #'   feature = "lemma",
 #'   timeframe = "day",
