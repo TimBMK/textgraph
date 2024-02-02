@@ -17,18 +17,18 @@ prepare_document_data <- function(topics,
                                   document_ids) {
   tf_idf <- topics %>%
     dplyr::left_join(documents,
-                     by = dplyr::join_by(entity == !!as.name(document_tokens))) %>%
+                     by = dplyr::join_by(entity == !!as.name(document_tokens)),
+                     relationship = "many-to-many") %>%
     dplyr::summarise(n = dplyr::n(), # calculate tf_idf
                      .by = c(entity, !!as.name(document_ids),
                              topic, page_rank)) %>%
     tidytext::bind_tf_idf(entity, !!as.name(document_ids), n) %>%
-    dplyr::mutate(term_relevance = (tf_idf * page_rank)) %>% # calculate topic term relevance as normalized (tf_idf * page_rank)
-    dplyr::mutate(
-      term_relevance = dplyr::case_when(!is.na(term_relevance) ~ scales::rescale(to = c(0, 1)), # rescale
-                                        .default = 1),
-      # set to 1 if no page rank is available (aka only 1 entity is in the topic)
-      .by = topic
-    )
+    dplyr::mutate(page_rank = dplyr::case_when(is.na(page_rank) ~ 0, # set missing page ranks to 0 (missing if a term has no connection to other terms in page_rank = "cluster")
+                                               .default = page_rank)) %>%
+    dplyr::mutate(term_relevance = (tf_idf * page_rank) %>% # calculate topic term relevance as normalized (tf_idf * page_rank)
+                    scales::rescale(to = c(0, 1)), # rescale
+                  .by = topic)
+
 
   document_data <- tf_idf %>%
     dplyr::summarise(entities = list(entity),
@@ -52,7 +52,7 @@ prepare_document_data <- function(topics,
                                    ~ (sum(is.na(.)) / n()))) %>%
     dplyr::select_if(~ (. > 0))
 
-  if (nrow(missing_data) > 0) {
+  if (nrow(missing_data) > 0 & ncol(missing_data) > 0) {
     warning("Missing data in variables ",
             paste(names(missing_data), collapse = ", "),
             ".\n",
