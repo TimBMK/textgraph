@@ -75,3 +75,41 @@ explore_topics(textgraph_topics = topics,
 
 
 The file is written to the current working directory (or a path specified under `output_file` and can be accessed via a web browser.
+
+
+## Dynamic Topics
+```{r}
+dynamic_topics <- calculate_dynamic_topics(
+  data = de_pol_twitter %>% 
+    dplyr::mutate(day = lubridate::floor_date(created_at, unit = "days")),
+  document = "doc_id", 
+  feature = "lemma", 
+  timeframe = "day", 
+  lookback = 3,
+  full_documents = NULL,
+  pmi_weight = TRUE, 
+  negative_edge_weights = TRUE, 
+  page_rank_calculation = "avg",
+  cluster_function = igraph::cluster_leiden,
+  python_env = "textgraph"
+)
+```
+```{r}
+dynamic_topics <- calculate_dynamic_topics(
+  data = de_pol_twitter %>% 
+    dplyr::mutate(day = lubridate::floor_date(created_at, unit = "days")),
+  document = "doc_id", 
+  feature = "lemma", 
+  timeframe = "day", 
+  lookback = 3,
+  full_documents = de_pol_twitter %>% # when passing document data...
+    dplyr::select(doc_id, lemma, # ...we reduce the columns to the required variables...
+                  created_at, author_id, party, tweet_url), #...and document (not token!) metadata
+  pmi_weight = TRUE, 
+  negative_edge_weights = TRUE, 
+  page_rank_calculation = "avg",
+  cluster_function = igraph::cluster_leiden,
+  python_env = "textgraph"
+)
+```
+
