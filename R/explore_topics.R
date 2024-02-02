@@ -29,11 +29,12 @@
 #'  @param document_ids Optional string; name of a variable in the document section of the `textgraph_object`
 #'                    containing the ID of the document. If provided, will print out the ID of the `n_top_docs`
 #'                    of each topic.
-#'  @param output_file Name (and optionally path) of the html file to be written. If no path is specified,
-#'                      the file will be written to the current working directory.
+#'  @param output_file Name of the html file to be written. If `NULL`, the result will be displayed in the default
+#'                      browser, but not saved.
+#'  @param output_dir Name of the directory to safe the `output_file` to. Defaults to the current working directory.
 #'  @param ... Additional arguments passed to `rmarkdown::render()`
 #'
-#'  @return Saves the output as html under the specified `output_file`, to be opened in a browser of your choice.
+#'  @return A html file
 #'
 #' @examples
 #' \dontrun{
@@ -61,7 +62,7 @@
 #'                split_var = "party", # we want information for each party
 #'                text_var = "tweet_url", # instead of the text, we display the tweet URL
 #'                document_ids = "doc_id",
-#'                output_file = "topic_exploration.html")
+#'                output_file = NULL)
 #' }
 #'
 #' @importFrom dplyr "%>%"
@@ -84,9 +85,19 @@ explore_topics <- function(
     split_var = NULL,
     text_var = NULL,
     document_ids = NULL,
-    output_file,
+    output_file = NULL,
+    output_dir = getwd(),
     ...
 ){
+
+  if (is.null(output_file)) {
+    no_output <- TRUE
+    output_file <- tempfile()
+    output_dir <- NULL
+  } else {
+    output_dir <- getwd()
+  }
+
   rmarkdown::render(
     input = file.path(path.package("textgraph"), "R", "explore_topics.Rmd"),
     params = list(textgraph_topics = textgraph_topics,
@@ -100,9 +111,15 @@ explore_topics <- function(
                   document_ids = document_ids),
     output_format = "html_document",
     output_file = output_file,
-    output_dir = getwd(), # current WD as output dir. Gets overwritten if output_file contains a path
+    output_dir = output_dir,
     envir = new.env(),
     ...
   )
+
+  if (no_output) {
+    browseURL(paste0(output_file, ".html"))
+    Sys.sleep(5) # let some time pass to make sure the file has been opened
+    unlink(paste0(output_file, ".html"))
+  }
 }
 
