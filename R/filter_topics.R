@@ -50,6 +50,12 @@ filter_topics <- function(textgraph_topics,
     res <- res[setdiff(names(res), "igraph_cluster")] # temporarily drop the cluster object
   }
 
+  if ("snapshots" %in% names(textgraph_topics)) {
+    snapshots <- textgraph_topics$snapshots
+
+    res <- res[setdiff(names(res), "snapshots")] # temporarily drop the snapshots object
+  }
+
 
   # filter topics
   res <- res %>% purrr::map(\(object) {
@@ -79,6 +85,10 @@ filter_topics <- function(textgraph_topics,
 
   if ("igraph_cluster" %in% names(textgraph_topics)) { # add cluster object
     res$igraph_cluster <- igraph_cluster
+  }
+
+  if ("igraph_cluster" %in% names(textgraph_topics)) { # add snapshots object
+    res$snapshots <- snapshots
   }
 
   class(res) <- "textgraph_topics"

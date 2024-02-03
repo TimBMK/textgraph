@@ -69,7 +69,7 @@ explore_topics(textgraph_topics = topics,
                split_var = "party", # we want information for each party
                text_var = "tweet_url", # instead of the text, we display the tweet URL
                document_ids = "doc_id",
-               output_file = "topic_exploration.html")
+               output_file = NULL)
 
 ```
 
@@ -102,14 +102,25 @@ dynamic_topics <- calculate_dynamic_topics(
   feature = "lemma", 
   timeframe = "day", 
   lookback = 3,
-  full_documents = de_pol_twitter %>% # when passing document data...
-    dplyr::select(doc_id, lemma, # ...we reduce the columns to the required variables...
-                  created_at, author_id, party, tweet_url), #...and document (not token!) metadata
+  full_documents = topic_documents,
   pmi_weight = TRUE, 
   negative_edge_weights = TRUE, 
   page_rank_calculation = "avg",
   cluster_function = igraph::cluster_leiden,
   python_env = "textgraph"
 )
+```
+
+```{r}
+explore_topics(textgraph_topics = dynamic_topics,
+               topic_threshold = 0.005,
+               n_top_terms = 10,
+               n_top_docs = 5,
+               time_var = "created_at", # we plot over time...
+               floor_time_var_by = "days", # ...by days
+               split_var = "party", # we want information for each party
+               text_var = "tweet_url", # instead of the text, we display the tweet URL
+               document_ids = "doc_id",
+               output_file = NULL)
 ```
 

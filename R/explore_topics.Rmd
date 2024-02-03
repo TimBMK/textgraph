@@ -67,12 +67,23 @@ additional_parameters <- # print additional parameters originally passed via "..
       "mean_topic_entities",
       "median_topic_entities",
       "mean_document_occurrences",
-      "median_document_occurrences"
+      "median_document_occurrences",
+      "nr_temporal_topics",
+      "mean_temporal_topic_entities",
+      "median_temporal_topic_entities",
+      "entities_in_topics",            
+      "entities_without_topics",
+      "mean_nr_snapshot_topics",
+      "median_nr_snapshot_topics",
+      "mean_snapshot_quality",
+      "median_snapshot_quality",
+      "snapshot_plot",
+      "snapshot_modularity"
     )
   )]
 
 if (length(additional_parameters > 0)){
-  cat("\n**Additional Paramters**:\n\n")
+  cat("\n**Additional Parameters**:\n\n")
   for (param in names(additional_parameters)) {
     cat(paste0("*", param, ": ", additional_parameters[[param]], "*\n\n"))
   }
