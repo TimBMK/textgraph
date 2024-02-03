@@ -3,14 +3,10 @@
 # Dynamic Community matching by:
 # Lorenz, Philipp et al. 2018. “Capturing the Dynamics of Hashtag-Communities.” In Complex Networks & Their Applications VI, Studies in Computational Intelligence, eds. Chantal Cherifi, Hocine Cherifi, Márton Karsai, and Mirco Musolesi. Cham: Springer International Publishing, 401–13.
 # https://github.com/philipplorenz/memory_community_matching
-# install / pull from git via "git clone https://github.com/philipplorenz/memory_community_matching" in terminal
 
 import memory_community_matching
 import pandas
 import math
-
-# sys.path.insert(0, "/data/koenigt/textgraph/memory_community_matching")
-# import memory_community_matching
 
 def dynamic_community_matching(snapshots, n_lookback):
   

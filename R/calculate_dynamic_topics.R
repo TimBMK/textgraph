@@ -116,7 +116,7 @@ calculate_dynamic_topics <- function(data,
 
   # Load Python
   reticulate::use_virtualenv(python_env)
-  reticulate::source_python(file.path(path.package("textgraph"), "extra",    # load the python function
+  reticulate::source_python(file.path(path.package("textgraph"),    # load the python function
                                       "dynamic_community_matching.py"))
 
   # Data Checks
