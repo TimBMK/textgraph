@@ -166,7 +166,9 @@ calculate_topics <- function(text_network,
   }
 
   # Calculate Cluster Metrics
-  metrics <- calculate_cluster_metrics(cluster, verbose, ...)
+  metrics <- calculate_cluster_metrics(cluster,
+                                       page_rank_calculation,
+                                       verbose, ...)
 
   # prepare document data
   if (!is.null(documents)) {

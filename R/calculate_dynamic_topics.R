@@ -254,7 +254,9 @@ calculate_dynamic_topics <- function(data,
   snapshot_metrics <- snapshots %>%
     purrr::map(\(snapshot)
                {
-                 calculate_cluster_metrics(snapshot$cluster, verbose = F, ...)
+                 calculate_cluster_metrics(snapshot$cluster,
+                                           page_rank_calculation,
+                                           verbose = F, ...)
     })
 
   ## Metrics Overview Plot Data
@@ -467,11 +469,11 @@ calculate_dynamic_topics <- function(data,
       dplyr::arrange(topic, dplyr::desc(page_rank))
   )
 
-  if (!is.null(documents)) {
+  if (!is.null(full_documents)) {
     textgraph_topic$documents <- document_data
   }
 
-  if (keep_cluster_object) {
+  if (keep_cluster_objects) {
     textgraph_topic$snapshots$igraph_cluster <- snapshots %>%
       purrr::map(\(snapshot) snapshot$cluster)
 

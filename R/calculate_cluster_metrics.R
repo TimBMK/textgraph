@@ -9,7 +9,7 @@
 #' @return Metrics
 #'
 #' @keywords internal
-calculate_cluster_metrics <- function(cluster, verbose, ...) {
+calculate_cluster_metrics <- function(cluster, verbose, page_rank_calculation, ...) {
 
   # Calculate Cluster Metrics
   algorithm <- tryCatch({igraph::algorithm(cluster)},
