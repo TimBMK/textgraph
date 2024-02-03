@@ -2,7 +2,7 @@
 #'
 #' Internal function that calculates the metrics of clusters calculated during the topic calculations
 #'
-#' @param cluster
+#' @param cluster Cluster as provided within the function
 #' @param verbose Print out Metrics?
 #' @param ... Additional parameters of the clustering algorithm
 #'

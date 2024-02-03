@@ -18,7 +18,9 @@ drop_quantile(
 
 \item{tokens}{String; column containing the tokens to count and drop}
 
-\item{quantile}{Numerical; the quantile up to and including which tokens are dropped}
+\item{quantile}{Either Numerical or a Vector of length 2; If a single value: the quantile up to and including which tokens are dropped.
+If a vector of two numerical values, the first indicates the lower, the second the upper threshold. E.g., c(0.1, 0.95) drops tokens
+below the 10% and above the 95% quantile.}
 
 \item{ignore_case}{Logical; should upper/lower case of the tokens be ignored? Preserves original case}
 
@@ -27,8 +29,8 @@ drop_quantile(
 \item{verbose}{Logical; should statistics be printed out?}
 }
 \value{
-A data frame containing all the variables of the original `data` as well as the additional 
- variable `entity count` indicating the number of times a token appears in the data. All tokens below 
+A data frame containing all the variables of the original `data` as well as the additional
+ variable `entity count` indicating the number of times a token appears in the data. All tokens below
  the `entity_count` specified through the quantile (and printed through `verbose`) are dropped.
 }
 \description{

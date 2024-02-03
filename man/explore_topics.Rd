@@ -14,7 +14,8 @@ explore_topics(
   split_var = NULL,
   text_var = NULL,
   document_ids = NULL,
-  output_file,
+  output_file = NULL,
+  output_dir = getwd(),
   ...
 )
 }
@@ -49,11 +50,12 @@ This function allows to explore a textgraph_topics object through a markdown-ren
  @param document_ids Optional string; name of a variable in the document section of the `textgraph_object`
                    containing the ID of the document. If provided, will print out the ID of the `n_top_docs`
                    of each topic.
- @param output_file Name (and optionally path) of the html file to be written. If no path is specified,
-                     the file will be written to the current working directory.
+ @param output_file Name of the html file to be written. If `NULL`, the result will be displayed in the default
+                     browser, but not saved.
+ @param output_dir Name of the directory to safe the `output_file` to. Defaults to the current working directory.
  @param ... Additional arguments passed to `rmarkdown::render()`
 
- @return Saves the output as html under the specified `output_file`, to be opened in a browser of your choice.
+ @return A html file
 }
 \examples{
 \dontrun{
@@ -81,7 +83,7 @@ explore_topics(textgraph_topics = topics,
                split_var = "party", # we want information for each party
                text_var = "tweet_url", # instead of the text, we display the tweet URL
                document_ids = "doc_id",
-               output_file = "topic_exploration.html")
+               output_file = NULL)
 }
 
 }
