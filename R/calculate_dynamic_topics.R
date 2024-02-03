@@ -269,7 +269,8 @@ calculate_dynamic_topics <- function(data,
   algorithm <- unique(plot_data$algorithm)
 
   metrics <- list(
-    algorithm = algorithm)
+    algorithm = algorithm,
+    lookback = lookback)
 
   ## additional clustering algorithm parameters
   params <- list(...) # get additional parameters
@@ -378,6 +379,7 @@ calculate_dynamic_topics <- function(data,
   if (verbose) {
     cat(
       "\nAlgorithm:", algorithm,
+      "\nLookback:", lookback,
       "\nPage Rank Calculation:", page_rank_calculation,
       "\nNumber of Temproal Topics:", nr_temporal_topics,
       "\nTotal Entities in Temporal Topics:", topic_entities,
