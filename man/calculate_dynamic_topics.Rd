@@ -17,6 +17,7 @@ calculate_dynamic_topics(
   cluster_function = igraph::cluster_leiden,
   ...,
   seed = TRUE,
+  match_clusters = TRUE,
   python_env = "textgraph",
   keep_cluster_objects = FALSE,
   keep_networks = FALSE,
@@ -58,6 +59,10 @@ Default is `igraph::cluster_leiden`.}
 
 \item{seed}{Seed for the parallelization, if a parallel plan is set up (see details).
 TRUE to let future set a seed. Numerical value to set a seed. NULL to not set any seed.}
+
+\item{match_clusters}{Logical. Should the matching algorithm be employed to match the snapshot clusters into temporal topics? Requires
+`python_env` if `TRUE`. Setting this to `FALSE` can be helpful to test different clustering settings without running the (potentiall costly)
+matching algorithm.}
 
 \item{python_env}{Python environment to use for the dynamic community matching. Set this up with [install_community_matching()]. See details.}
 

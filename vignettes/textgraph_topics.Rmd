@@ -33,8 +33,8 @@ text_network <- make_textnetwork(data = de_pol_twitter,
                                 keep_negative_weights = TRUE)
 ```
 
-```{r}
 
+```{r}
 main_parties <- de_pol_twitter %>% # we are mostly interested in the seven parties with the most tweets, which, unsurprisingly, are Germany's biggest parties
   distinct(doc_id, party) %>% 
   summarise(n = n(),.by = party) %>% 
@@ -46,7 +46,10 @@ topic_documents <- de_pol_twitter %>% # when passing document data...
          created_at, author_id, party, tweet_url) %>%  #...and document (not token!) metadata
   mutate(party = case_when(!(party %in% main_parties) ~ "other", # for all parties not among the big 7, we set the variable to "other"
                            .default = party))
+```
 
+
+```{r}
 topics <- calculate_topics(text_network,
                           documents = topic_documents,
                           document_tokens = "lemma",
@@ -108,8 +111,26 @@ dynamic_topics <- calculate_dynamic_topics(
   negative_edge_weights = TRUE, 
   page_rank_calculation = "avg",
   cluster_function = igraph::cluster_leiden,
-  python_env = "textgraph"
-)
+  match_clusters = TRUE,
+  python_env = "textgraph")
+```
+
+
+```{r}
+dynamic_topics <- calculate_dynamic_topics(
+  data = de_pol_twitter %>% 
+    dplyr::mutate(day = lubridate::floor_date(created_at, unit = "days")),
+  document = "doc_id", 
+  feature = "lemma", 
+  timeframe = "day", 
+  lookback = 3,
+  full_documents = topic_documents,
+  pmi_weight = TRUE, 
+  negative_edge_weights = TRUE, 
+  page_rank_calculation = "avg",
+  cluster_function = igraph::cluster_leiden,
+  match_clusters = FALSE,
+  python_env = "textgraph")
 ```
 
 ```{r}

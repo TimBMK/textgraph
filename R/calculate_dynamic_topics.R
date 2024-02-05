@@ -27,6 +27,9 @@
 #' @param cluster_function The clustering function to use. Can be any igraph clustering function.
 #'  Default is `igraph::cluster_leiden`.
 #' @param ... Additional arguments passed to `cluster_function`.
+#' @param match_clusters Logical. Should the matching algorithm be employed to match the snapshot clusters into temporal topics? Requires
+#'  `python_env` if `TRUE`. Setting this to `FALSE` can be helpful to test different clustering settings without running the (potentiall costly)
+#'  matching algorithm.
 #' @param python_env Python environment to use for the dynamic community matching. Set this up with [install_community_matching()]. See details.
 #' @param keep_cluster_objects Logical indicating whether to keep the igraph cluster object of each snapshot.
 #'  Can be helpful for additional checks. See `help(igraph::membership)`. Also returns clustering metrics for each snapshot cluster.
@@ -120,6 +123,7 @@ calculate_dynamic_topics <- function(data,
                                      cluster_function = igraph::cluster_leiden,
                                      ...,
                                      seed = TRUE,
+                                     match_clusters = TRUE,
                                      python_env = "textgraph",
                                      keep_cluster_objects = FALSE,
                                      keep_networks = FALSE,
@@ -127,9 +131,11 @@ calculate_dynamic_topics <- function(data,
 ){
 
   # Load Python
-  reticulate::use_virtualenv(python_env)
-  reticulate::source_python(file.path(path.package("textgraph"),    # load the python function
-                                      "dynamic_community_matching.py"))
+  if (match_clusters){
+    reticulate::use_virtualenv(python_env)
+    reticulate::source_python(file.path(path.package("textgraph"),    # load the python function
+                                        "dynamic_community_matching.py"))
+  }
 
   # Data Checks
   if (!(document %in% names(data))) {
@@ -193,22 +199,31 @@ calculate_dynamic_topics <- function(data,
                  )
     }) %>% data.table::rbindlist()
 
-  if (verbose) {
-    cat("\nDynamic Community Matching...")
+  if (match_clusters) {
+
+    if (verbose) {
+      cat("\nDynamic Community Matching...")
+    }
+
+    reticulate::py_capture_output({ # this suppresses any additional python printout
+      dynamic_communities <- dynamic_community_matching(community_data,
+                                                        as.integer(lookback)) %>%
+        suppressWarnings() # supresses warning about missing row names
+    })
+
+    community_data <- community_data %>% # add temporal communities
+      mutate(snapshot = dplyr::dense_rank(time)) %>%
+      dplyr::left_join(dynamic_communities, by = c("snapshot", "community"))
+
+    topics <- community_data %>%
+      dplyr::distinct(node, temporal_community)
+
+  } else {
+
+    topics <- community_data %>%
+      dplyr::mutate(temporal_community = paste0(time, "_", community))
+
   }
-
-  reticulate::py_capture_output({ # this suppresses any additional python printout
-    dynamic_communities <- dynamic_community_matching(community_data,
-                                                      as.integer(lookback)) %>%
-      suppressWarnings() # supresses warning about missing row names
-  })
-
-  community_data <- community_data %>% # add temporal communities
-    mutate(snapshot = dplyr::dense_rank(time)) %>%
-    dplyr::left_join(dynamic_communities, by = c("snapshot", "community"))
-
-  topics <- community_data %>%
-    dplyr::distinct(node, temporal_community)
 
   if (verbose) {
     cat("\nCalculating Page Ranks...")
@@ -301,8 +316,11 @@ calculate_dynamic_topics <- function(data,
   algorithm <- unique(plot_data$algorithm)
 
   metrics <- list(
-    algorithm = algorithm,
-    lookback = lookback)
+    algorithm = algorithm)
+
+  if (match_clusters) {
+    metrics$lookback <- lookback
+  }
 
   ## additional clustering algorithm parameters
   params <- list(...) # get additional parameters
@@ -315,32 +333,46 @@ calculate_dynamic_topics <- function(data,
 
   page_rank_calculation <- unique(plot_data$page_rank_calculation)
 
-  nr_temporal_topics <- topics %>%
-    dplyr::filter(!is.na(temporal_community)) %>%
-    dplyr::distinct(temporal_community) %>%
-    nrow()
+  if (match_clusters) {
+    nr_temporal_topics <- topics %>%
+      dplyr::filter(!is.na(temporal_community)) %>%
+      dplyr::distinct(temporal_community) %>%
+      nrow()
 
-  mean_temporal_topic_entities <- topics %>%
-    dplyr::filter(!is.na(temporal_community)) %>%
-    dplyr::summarise(n = n(), .by = temporal_community) %>%
-    dplyr::pull(n) %>%
-    mean()
+    mean_temporal_topic_entities <- topics %>%
+      dplyr::filter(!is.na(temporal_community)) %>%
+      dplyr::summarise(n = n(), .by = temporal_community) %>%
+      dplyr::pull(n) %>%
+      mean()
 
-  median_temporal_topic_entities <- topics %>%
-    dplyr::filter(!is.na(temporal_community)) %>%
-    dplyr::summarise(n = n(), .by = temporal_community) %>%
-    dplyr::pull(n) %>%
-    stats::median()
+    median_temporal_topic_entities <- topics %>%
+      dplyr::filter(!is.na(temporal_community)) %>%
+      dplyr::summarise(n = n(), .by = temporal_community) %>%
+      dplyr::pull(n) %>%
+      stats::median()
 
-  topicless_entities <- topics %>%
-    dplyr::filter(is.na(temporal_community)) %>%
-    dplyr::distinct(node) %>%
-    nrow()
+    topicless_entities <- topics %>%
+      dplyr::filter(is.na(temporal_community)) %>%
+      dplyr::distinct(node) %>%
+      nrow()
 
-  topic_entities <- topics %>%
-    dplyr::filter(!is.na(temporal_community)) %>%
-    dplyr::distinct(node) %>%
-    nrow()
+    topic_entities <- topics %>%
+      dplyr::filter(!is.na(temporal_community)) %>%
+      dplyr::distinct(node) %>%
+      nrow()
+  } else {
+    unavailable <- "No Temporal Topics Calculated."
+
+    nr_temporal_topics <- unavailable
+
+    mean_temporal_topic_entities <- unavailable
+
+    median_temporal_topic_entities <- unavailable
+
+    topicless_entities <- unavailable
+
+    topic_entities <- unavailable
+  }
 
   mean_nr_snapshot_topics <- plot_data %>%
     dplyr::filter(!is.na(nr_topics)) %>%
@@ -483,11 +515,19 @@ calculate_dynamic_topics <- function(data,
 
   if (verbose) {
     if (!is.null(full_documents)) {
+      if (match_clusters) {
+        cat(
+          "\nDocument Metrics for Temporal Topics:"
+        )
+      } else {
+        cat(
+          "\nDocument Metrics for Snapshot Topics:"
+        )
+      }
       cat(
-        "\nDocument Metrics for Temporal Topics:",
         "\n Mean Number of Documents per Topic:", mean_document_occurrences,
         "\n Median Number of Documents per Topic:", median_document_occurrences
-      )
+        )
     }
     cat("\n")
   }
