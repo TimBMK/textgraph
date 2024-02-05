@@ -4,7 +4,7 @@
 \alias{calculate_cluster_metrics}
 \title{Calculate Metrics for Clusters}
 \usage{
-calculate_cluster_metrics(cluster, verbose, ...)
+calculate_cluster_metrics(cluster, verbose, page_rank_calculation, ...)
 }
 \arguments{
 \item{cluster}{Cluster as provided within the function}

@@ -8,6 +8,13 @@
 #' @param document_ids IDs in document data
 #'
 #' @return prepared document data
+#'
+#' @importFrom dplyr "%>%"
+#' @importFrom dplyr left_join join_by summarise n mutate case_when arrange desc select distinct select_if across
+#' @importFrom tidytext bind_tf_idf
+#' @importFrom scales rescale
+#' @importFrom tidyselect everything
+#'
 #' @keywords internal
 
 

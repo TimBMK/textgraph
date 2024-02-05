@@ -57,6 +57,18 @@
 #' @references Lorenz, Philipp et al. 2018. “Capturing the Dynamics of Hashtag-Communities.” In: Complex Networks & Their Applications VI, Studies in Computational Intelligence.
 #' (\href{https://doi.org/10.1007/978-3-319-72150-7_33}{DOI: 10.1007/978-3-319-72150-7_33})
 #'
+#' @importFrom dplyr "%>%"
+#' @importFrom dplyr mutate n dense_rank rename distinct mutate pull filter summarise left_join join_by arrange desc n
+#' @importFrom stats median
+#' @importFrom furrr future_map furrr_options
+#' @importFrom purrr imap map
+#' @importFrom reticulate use_virtualenv source_python py_capture_output
+#' @importFrom data.table as.data.table rbindlist
+#' @importFrom igraph cluster_leiden page_rank
+#' @importFrom ggplot2 ggplot labs geom_point aes
+#' @importFrom tibble tibble rownames_to_column
+#'
+#'
 #' @export
 #'
 #' @examples
@@ -133,9 +145,13 @@ calculate_dynamic_topics <- function(data,
   }
 
 
+  if (verbose) {
+    cat("Making Network Snapshots...\n")
+  }
 
   snapshots <- data %>%
-    split(.[[timeframe]]) %>%
+    data.table::as.data.table() %>%
+    split(by = timeframe) %>%
     furrr::future_map(\(snapshot)
                       {
                         # calculate the network for each snapshot
@@ -164,6 +180,7 @@ calculate_dynamic_topics <- function(data,
 
                         return(out)
     },
+    .progress = verbose,
     .options = furrr::furrr_options(seed = seed)) # let future_map set a seed for the RNG involved in the cluster calculation
 
   community_data <- snapshots %>%
@@ -175,6 +192,10 @@ calculate_dynamic_topics <- function(data,
                    node = snapshot %>% .[["cluster"]] %>% .$name
                  )
     }) %>% data.table::rbindlist()
+
+  if (verbose) {
+    cat("\nDynamic Community Matching...")
+  }
 
   reticulate::py_capture_output({ # this suppresses any additional python printout
     dynamic_communities <- dynamic_community_matching(community_data,
@@ -188,6 +209,10 @@ calculate_dynamic_topics <- function(data,
 
   topics <- community_data %>%
     dplyr::distinct(node, temporal_community)
+
+  if (verbose) {
+    cat("\nCalculating Page Ranks...")
+  }
 
   if (page_rank_calculation == "avg") {
     avg_pageranks <- snapshots %>%
@@ -251,6 +276,11 @@ calculate_dynamic_topics <- function(data,
   }
 
   # Calculate Metrics
+
+  if (verbose) {
+    cat("\nPreparing Topics...")
+  }
+
   snapshot_metrics <- snapshots %>%
     purrr::map(\(snapshot)
                {

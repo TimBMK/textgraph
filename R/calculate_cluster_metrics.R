@@ -8,6 +8,8 @@
 #'
 #' @return Metrics
 #'
+#' @importFrom igraph algorithm modularity sizes
+#'
 #' @keywords internal
 calculate_cluster_metrics <- function(cluster, verbose, page_rank_calculation, ...) {
 

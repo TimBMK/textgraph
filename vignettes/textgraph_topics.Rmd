@@ -94,6 +94,7 @@ dynamic_topics <- calculate_dynamic_topics(
   python_env = "textgraph"
 )
 ```
+
 ```{r}
 dynamic_topics <- calculate_dynamic_topics(
   data = de_pol_twitter %>% 

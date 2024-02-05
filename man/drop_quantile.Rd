@@ -20,7 +20,7 @@ drop_quantile(
 
 \item{quantile}{Either Numerical or a Vector of length 2; If a single value: the quantile up to and including which tokens are dropped.
 If a vector of two numerical values, the first indicates the lower, the second the upper threshold. E.g., c(0.1, 0.95) drops tokens
-below the 10% and above the 95% quantile.}
+below the 10\% and above the 95\% quantile.}
 
 \item{ignore_case}{Logical; should upper/lower case of the tokens be ignored? Preserves original case}
 
@@ -38,7 +38,7 @@ This function drops all tokens in a data frame occurring below the threshold of 
 }
 \details{
 Tokens falling within or below the specified quantile will be dropped. E.g., when specifying
- `quantile = 0.1`, all tokens within or below the 10% quantile of the entity count will be dropped.
+ `quantile = 0.1`, all tokens within or below the 10\% quantile of the entity count will be dropped.
 }
 \examples{
 data("de_pol_twitter")

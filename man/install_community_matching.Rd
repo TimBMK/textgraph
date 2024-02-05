@@ -29,6 +29,7 @@ Sets up a reticulate environment
 \description{
 Installs the required packages and the matching algorithm into a specified reticulate Python environment.
 Generally recommended to use the fresh `textgraph` environment when setting up.
+For the cloning of the Git repository, Git needs to be installed on the system (requires the `git clone` command).
 }
 \examples{
 \dontrun{

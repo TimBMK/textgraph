@@ -2,6 +2,7 @@
 #'
 #' Installs the required packages and the matching algorithm into a specified reticulate Python environment.
 #' Generally recommended to use the fresh `textgraph` environment when setting up.
+#' For the cloning of the Git repository, Git needs to be installed on the system (requires the `git clone` command).
 #'
 #' @param envname String; Name of the environment used for installation. Defaults to a specific "textgraph" environment
 #' @param method See [reticulate::py_install()]
@@ -13,6 +14,8 @@
 #'
 #' @return Sets up a reticulate environment
 #' @export
+#'
+#' @importFrom reticulate py_install use_virtualenv py_discover_config
 #'
 #' @examples
 #' \dontrun{
