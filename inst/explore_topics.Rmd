@@ -89,16 +89,24 @@ if (length(additional_parameters > 0)){
   }
 }
 
-cat("\n\nOnly Printing Topics occurring in at least", 
+
+if ("documents" %in% names(textgraph_topics)) {
+  cat("\n\nOnly Printing Topics occurring in at least", 
+      scales::percent(topic_threshold, accuracy = topic_threshold*100),
+      "of Documents:",  
+      textgraph_topics$metrics$nr_topics, 
+      "out of", 
+      prefilter_metrics$nr_topics, "Topics. \n\n")
+} else {
+  cat(
+    "\n\nOnly Printing Topics containing at least", 
     scales::percent(topic_threshold, accuracy = topic_threshold*100),
-    "of Documents:",  
+    "of Entities:",  
     textgraph_topics$metrics$nr_topics, 
     "out of", 
     prefilter_metrics$nr_topics, "Topics. \n\n")
-
-if (!("documents" %in% names(textgraph_topics))){
-  cat("*Note*: No documents were provided. Topic proportions are calculated as number of",
-      "entities in a topic. Passing document data to `calculate_topics()`",
+  
+  cat("*Note*: No documents were provided. Passing document data to `calculate_topics()`",
       "provides document-related topic exploration.")
 }
 

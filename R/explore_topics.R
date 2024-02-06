@@ -99,7 +99,7 @@ explore_topics <- function(
   }
 
   rmarkdown::render(
-    input = file.path(path.package("textgraph"), "R", "explore_topics.Rmd"),
+    input = file.path(path.package("textgraph"), "explore_topics.Rmd"),
     params = list(textgraph_topics = textgraph_topics,
                   topic_threshold = topic_threshold,
                   n_top_terms = n_top_terms,
