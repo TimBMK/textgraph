@@ -1,3 +1,3 @@
-# textgraph 0.1.0
+# textgraph 1.0
 
-* First package version with all essential functions, documentation and vignette.
+* Initial Release, including core functions, vignettes, and documentation
