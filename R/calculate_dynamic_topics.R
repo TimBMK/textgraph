@@ -150,6 +150,10 @@ calculate_dynamic_topics <- function(data,
     stop("'data' must be a data frame.\n")
   }
 
+  if (!is.null(full_documents)) {
+    exists(full_documents)
+  }
+
 
   if (verbose) {
     cat("Making Network Snapshots...\n")
@@ -334,18 +338,18 @@ calculate_dynamic_topics <- function(data,
   page_rank_calculation <- unique(plot_data$page_rank_calculation)
 
   if (match_clusters) {
-    nr_temporal_topics <- topics %>%
+    nr_topics <- topics %>%
       dplyr::filter(!is.na(temporal_community)) %>%
       dplyr::distinct(temporal_community) %>%
       nrow()
 
-    mean_temporal_topic_entities <- topics %>%
+    mean_topic_entities <- topics %>%
       dplyr::filter(!is.na(temporal_community)) %>%
       dplyr::summarise(n = n(), .by = temporal_community) %>%
       dplyr::pull(n) %>%
       mean()
 
-    median_temporal_topic_entities <- topics %>%
+    median_topic_entities <- topics %>%
       dplyr::filter(!is.na(temporal_community)) %>%
       dplyr::summarise(n = n(), .by = temporal_community) %>%
       dplyr::pull(n) %>%
@@ -363,11 +367,11 @@ calculate_dynamic_topics <- function(data,
   } else {
     unavailable <- "No Temporal Topics Calculated."
 
-    nr_temporal_topics <- unavailable
+    nr_topics <- unavailable
 
-    mean_temporal_topic_entities <- unavailable
+    mean__topic_entities <- unavailable
 
-    median_temporal_topic_entities <- unavailable
+    median_topic_entities <- unavailable
 
     topicless_entities <- unavailable
 
@@ -387,9 +391,9 @@ calculate_dynamic_topics <- function(data,
   metrics <- c(metrics,
                list(
                  page_rank_calculation = page_rank_calculation,
-                 nr_temporal_topics = nr_temporal_topics,
-                 mean_temporal_topic_entities = mean_temporal_topic_entities,
-                 median_temporal_topic_entities = median_temporal_topic_entities,
+                 nr_topics = nr_topics,
+                 mean_topic_entities = mean_topic_entities,
+                 median_topic_entities = median_topic_entities,
                  entities_in_topics = topic_entities,
                  entities_without_topics = topicless_entities,
                  mean_nr_snapshot_topics = mean_nr_snapshot_topics,
@@ -445,11 +449,11 @@ calculate_dynamic_topics <- function(data,
       "\nAlgorithm:", algorithm,
       "\nLookback:", lookback,
       "\nPage Rank Calculation:", page_rank_calculation,
-      "\nNumber of Temproal Topics:", nr_temporal_topics,
+      "\nNumber of Temproal Topics:", nr_topics,
       "\nTotal Entities in Temporal Topics:", topic_entities,
       "\nTotal Entities without Temporal Topic:", topicless_entities,
-      "\nMean Number of Entities per Temporal Topic:", mean_temporal_topic_entities,
-      "\nMedian Number of Entities per Temporal Topic:", median_temporal_topic_entities,
+      "\nMean Number of Entities per Temporal Topic:", mean_topic_entities,
+      "\nMedian Number of Entities per Temporal Topic:", median_topic_entities,
       "\nSnapshot Metrics:",
       "\n Mean Number of Topics in Snapshots:", mean_nr_snapshot_topics,
       "\n Median Number of Topics in Snapshots:", median_nr_snapshot_topics
