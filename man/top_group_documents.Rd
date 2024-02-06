@@ -48,6 +48,7 @@ This function displays or returns the top documents for each group based on
  the results of document classification.
 }
 \examples{
+\dontrun{
 # the classified_documents object in this example is created by classify_document() - see help(classify_documents)
 # note that you would usually want to use non-tokenized documents as 'documents'. This data, however, does not come
 #   with the package. Instead, we paste the tokens of each document together
@@ -62,5 +63,6 @@ top_group_documents(classification_result = classified_documents,
                     n = 20,
                     with_ties = FALSE,
                     mode = "print")
+}
 
 }

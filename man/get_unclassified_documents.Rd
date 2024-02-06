@@ -35,6 +35,7 @@ Depending on `mode`, either prints the results or
 A function to return or print a random sample of documents not classified by `classify_documents()`.
 }
 \examples{
+\dontrun{
 # the classified_documents object in this example is created by classify_document() - see help(classify_documents)
 # note that you would usually want to use non-tokenized documents as 'documents'. This data, however, does not come
 #   with the package. Instead, we paste the tokens of each document together
@@ -46,5 +47,6 @@ get_unclassified_documents(classification_result = classified_documents,
                            doc_id = "doc_id",
                            n = 20,
                            mode = "print")
+}
 
 }

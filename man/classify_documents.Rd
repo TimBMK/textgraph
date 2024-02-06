@@ -103,6 +103,7 @@ This functions classifies documents based on the scores returned by `get_rwr_ter
  `cut_frequent_group_terms` are intended to fine-tune the results without re-running the Random Walks with Restart.
 }
 \examples{
+\dontrun{
 # the rwr_terms object in this example is created via get_rwr_terms(). See help(get_rwr_terms)
 
 data(de_pol_twitter)
@@ -125,4 +126,5 @@ classified_documents <- classify_documents(walk_terms = rwr_terms,
                                            return_walk_terms = TRUE,
                                            return_unclassified_docs = TRUE,
                                            verbose = TRUE)
+}
 }

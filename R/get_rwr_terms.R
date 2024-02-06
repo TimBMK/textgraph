@@ -70,6 +70,7 @@
 #'  “Random walk with restart on multiplex and heterogeneous biological networks.” Bioinformatics 35 (3)
 #'
 #' @examples
+#' \dontrun{
 # the multiplex_text_network object is created by make_multiplex_object() - see help(make_multiplex_object)
 # the seed_terms object is created by get_seed_terms() - see help(get_seed_terms)
 #'
@@ -92,7 +93,7 @@
 #'                            keep_seed_terms = TRUE,
 #'                            seedterm_value = NULL,
 #'                            progress = TRUE)
-#'
+#'}
 #'
 #' @importFrom dplyr "%>%"
 #' @importFrom rlang arg_match

@@ -22,6 +22,7 @@
 #'   returns a data frame containing the specified number of top terms for each group.
 #'
 #' @examples
+#' \dontrun{
 #' # the classified_documents object in this example is created by classify_document() - see help(classify_documents)
 #'
 #' top_group_terms(classification_result = classified_documents,
@@ -31,7 +32,7 @@
 #'                 n = 20,
 #'                 with_ties = TRUE,
 #'                 mode = "print")
-#'
+#'}
 #'
 #' @export
 #' @importFrom rlang arg_match

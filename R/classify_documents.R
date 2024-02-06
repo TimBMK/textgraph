@@ -69,6 +69,7 @@
 #' @importFrom tibble as_tibble
 #'
 #' @examples
+#' \dontrun{
 #' # the rwr_terms object in this example is created via get_rwr_terms(). See help(get_rwr_terms)
 #'
 #' data(de_pol_twitter)
@@ -91,6 +92,7 @@
 #'                                            return_walk_terms = TRUE,
 #'                                            return_unclassified_docs = TRUE,
 #'                                            verbose = TRUE)
+#'}
 classify_documents <- function(
   walk_terms,
   group_name,

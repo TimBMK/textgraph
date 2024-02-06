@@ -114,6 +114,7 @@ Multi-threading is supported via the furrr/future packages. Set up a multi-threa
  RAM may fail abruptly and without notice.
 }
 \examples{
+\dontrun{
 
 rwr_terms <- get_rwr_terms(walk_network = multiplex_text_network,
                            network_name = NULL,
@@ -134,7 +135,7 @@ rwr_terms <- get_rwr_terms(walk_network = multiplex_text_network,
                            keep_seed_terms = TRUE,
                            seedterm_value = NULL,
                            progress = TRUE)
-
+}
 
 }
 \references{

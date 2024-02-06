@@ -13,18 +13,19 @@
 #'
 #' @details This is effectively a wrapper for the internal function `calculate_networks()`, allowing to calculate a text cooccurrence network
 #'  from a data frame.
-#'  
-#' @examples 
+#'
+#' @examples
 #' data("de_pol_twitter")
+#'
 #' text_network <- make_textnetwork(data = de_pol_twitter,
-#'                                 document = "doc_id", 
+#'                                 document = "doc_id",
 #'                                 feature = "lemma",
 #'                                 pmi_weight = TRUE,
 #'                                 as_data_frame = FALSE,
 #'                                 keep_negative_weights = TRUE)
 #'
 #' @export
-#' 
+#'
 
 
 
@@ -38,7 +39,7 @@ make_textnetwork <- function(data,
                              pmi_weight = TRUE,
                              as_data_frame = FALSE,
                              keep_negative_weights = TRUE){
-  
+
   if (!(document %in% names(data))) {
     stop(paste0("document '", document, "' not in data.\n"))
   }
@@ -58,6 +59,6 @@ make_textnetwork <- function(data,
     pmi_weight = pmi_weight,
     as_data_frame = as_data_frame,
     keep_negative_weights = keep_negative_weights)
-  
+
   return(network)
 }

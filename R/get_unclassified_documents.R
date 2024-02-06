@@ -16,6 +16,7 @@
 #'   returns a data frame containing the specified number of missing documents.
 #'
 #' @examples
+#' \dontrun{
 #' # the classified_documents object in this example is created by classify_document() - see help(classify_documents)
 #' # note that you would usually want to use non-tokenized documents as 'documents'. This data, however, does not come
 #' #   with the package. Instead, we paste the tokens of each document together
@@ -27,6 +28,7 @@
 #'                            doc_id = "doc_id",
 #'                            n = 20,
 #'                            mode = "print")
+#' }
 #'
 #' @export
 #'
