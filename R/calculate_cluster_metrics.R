@@ -11,7 +11,7 @@
 #' @importFrom igraph algorithm modularity sizes
 #'
 #' @keywords internal
-calculate_cluster_metrics <- function(cluster, verbose, page_rank_calculation, ...) {
+calculate_cluster_metrics <- function(cluster, page_rank_calculation, verbose, ...) {
 
   # Calculate Cluster Metrics
   algorithm <- tryCatch({igraph::algorithm(cluster)},
