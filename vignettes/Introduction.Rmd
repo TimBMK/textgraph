@@ -1,0 +1,317 @@
+---
+title: "Introduction"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+# Introduction
+
+The `textgraph` package allows users to build and analyse large-scale text co-occurrence graphs. Currently, there are two main workflows:
+
+1) Retrieving terms or entities functionally equivalent to previously extracted seed terms, and retrieve associated documents. This can be compared to certain types of **seeded topic modeling**;
+2) Retrieving clusters of related terms or entities via community detection algorithms, either statically for a single network or dynamically for a number of temporal network snapshots. This can be compared to **unsupervised topic modeling** approaches.
+
+A number of helper functions is provided to make the required text graphs, either unweighted or weighted via PMI (point-wise mutual information).
+
+It is recommended to build the text graphs out of entities of interest, e.g. named entities, noun words, etc., rather than from all words in the given documents. As there are a number of approaches to extract these entities from documents, such as spaCy, Quanteda, etc., `textgraph` does not provide functions for their extraction. Rather, it expects document-feature data frames, with one entity per row, and the corresponding document IDs. Just like with common topic modeling approaches, the type of entities used will heavily influence the type of results and their interpretation. However, in contrast to probabilistic topic modeling approaches like LDA, `textgraph` methods are practically agnostic to document properties like length, as documents are not directly used to calculate topics, but only provide the basis for the extraction of entity relations. 
+
+`textgraph` was built for the processing of very large graphs, with documents in the millions. Where applicable, it provides functionality for parallel computing via the **future** and **furrr** packages. This means that it is sufficient to set up a `future::plan()` to make use of the package's parallel processing capabilities. See `?future::plan` for details on how to set up a plan. However, depending on the size of the graphs processed, and the machine used, RAM *can* become a potential bottleneck. In this case it is recommended to reduce the size of the graphs by reducing the number of entities fed into the graph, for which `textgraph` provides some functionality.
+
+
+```{r setup}
+library(textgraph)
+library(tidyverse) # we use the tidyverse for some data cleaning functionality
+```
+
+# 1) Seed Terms and Random Walks
+
+The first workflow provides functionality to extract seed terms from a number of sources, find related terms via Random Walks, and retrieve documents based on these terms. For our example, we will use a small, one week sample of Tweets by German politicians, as provided by the [EPINetz Twitter Politicians](https://doi.org/10.7802/2609) data set. Imagine that we want to know how German Politicians on Twitter talk about certain policy areas, in order to see which issues are relevant. Furthermore, assume that the official ministry accounts (the ministry of economy, of defense, etc.) are reasonable starting points to identify these policy areas, as their tweets are usually focused on their corresponding policies. However, in order to find out what politicians in general, rather than just the official ministry accounts, have to say about these policy areas, we need to find additional, policy-related terms and documents. To get these, we can use [Random Walks with Restart](https://github.com/alberto-valdeolivas/RandomWalkRestartMH/tree/master).
+
+
+First off, we load the provided sample data of German politicians' tweets. Conveniently, this data is already tokenized and lemmatized via spaCy, and has been reduced to noun words (named entities and nouns). Additionally, the ministry associated with the posting Twitter account has been annotated, with `NA` for non-ministry accounts.
+```{r}
+data("de_pol_twitter")
+```
+
+Next up, we want to extract the seed terms of the ministries, which will provide the starting points for the random walks. In order to do this, we simply compare the terms in each of the ministries' tweets with all other documents in the sample, and extract the most distinctive terms via the **Chi²** measure. Note that we could also use other keyness measures, such as the likelihood ratio, or PMI. Additionally, we set a threshold, indicating the minimum value of the keyness measure that a term needs to reach in order to be considered a seed term. We could also set a number of minimum or maximum terms to return for each group (here: each ministry), which can be helpful when dealing with unevenly disitributed samples. Finally, we could return plots for each of the keyness calculations, or save them to the returned object, which can help with diagnosing the results and tweaking the keyness threshold.
+
+The result is a data frame (a tibble, to be precise) with seed terms for each ministry. Note that we used the lemmatized terms here which have also already been set to lower case.
+
+```{r}
+seed_terms <- get_seed_terms(de_pol_twitter,
+                             doc_id = "doc_id",
+                             tokens = "lemma",
+                             grouping_var = "ministry_name",
+                             measure = "chi2",
+                             threshold = 20,
+                             max_results = NULL,
+                             min_results = NULL,
+                             max_result_ties = FALSE,
+                             show_plots = F,
+                             save_plots = F)
+
+seed_terms
+```
+
+Before calculating and running random walks on the complete text graph, we want to reduce the number of entities to consider, which will speed up computation quite significantly. While not technically necessary here, it can be very helpful for larger data sets. Rather than setting an (often arbitrary) fixed value of times a term needs to occur, we use quantiles. For this, the `drop_quantile()` function is provided, which additionally returns some statistics on how many unique entities were eventually dropped from the corpus. In our sample case, we drop all noun words whose total occurrences are in the 10% quantile of occurrences. This practically means that we drop all noun words that occur only once in the sample (and are therefore most likely irrelevant), but this reduces their number - and therefore the number of nodes in our soo-to-be-calculated graph- by almost 60%! By specifying the "tag" column as a group in the function, we get more detailed statistics on how each of these groups (here nouns and named entities) were processed and reduced.
+
+```{r}
+de_pol_twitter_reduced <- drop_quantile(data = de_pol_twitter,
+                                        tokens = "lemma",
+                                        quantile = 0.1,
+                                        ignore_case = FALSE, # in this case, "lemma" has already been set to lower case
+                                        group = "tag",
+                                        verbose = TRUE)
+```
+
+The next step is to make the specific network graph required for the random walk process. In this case, we want to weigh it by the PMI (the point-wise mutual information between any two entities, as calculated through their co-occurrence in documents). Note that in some cases, this PMI can be negative, meaning that it is more unlikely for two terms to co-occur in a document than it is for them to co-occur at random. The random walks can handle this, but we could also drop the negative weights with `keep_negative_weights = FALSE`, which can speed up computation in some cases. Note that we could also use an already calculated text network, rather than making one from scratch, e.g. one made with the `make_textnetwork()` function, and turn it into a random-walk ready multiplex object. While the `make_multiplex_object()` function allows to keep all objects calculated in the process, like the igraph network, only the **multiplex network** and the **normalized adjacency matrix** are required for the random walks.
+```{r}
+multiplex_text_network <- make_multiplex_objects(de_pol_twitter_reduced,
+                                                 document = "doc_id",
+                                                 feature = "lemma",
+                                                 pmi_weight = TRUE,
+                                                 keep_negative_weights = TRUE,
+                                                 network = NULL,
+                                                 keep_igraph_network = FALSE,
+                                                 keep_multiplex_network = TRUE,
+                                                 keep_adjacency_matrix = FALSE,
+                                                 keep_normalized_adjacency_matrix = TRUE)
+```
+
+If we want to process large data, now would be a good time to set up a multisession with `future::plan()`. The number of workes can be specified with the option `workers = ...`. The `get_rwr_terms()` function will then automatically make use of all the workers provided to calculate the random walks. Note, however, that, for large networks, you need to make sure to provide enough RAM for the subprocesses, as the networks exported to them can get large - and subprocesses running out of RAM can fail rather ungracefully, without providing much info on their failure.
+```{r}
+# future::plan("future::multisession")
+```
+
+Now, we are ready to calculate the random walks and extract the associated terms. As the random walk process returns a score for each seed node's connection to *all* other terms in the network, it is advised to set a minimum `walk_score` below which connections are discarded as irrelevant. Without a `walk_score`, the returned objects can get *very* big for large networks. Again, functionality is provided to use quantiles within each group, rather than flat values, and reports on these quantiles are issued with `report_quantiles = TRUE`. Additionally, there are a number of options to normalize the raw, hard to interpret walk scores, such as calculating and normalizing means over individual seeds or the groups. Note that by setting `normalize_score = c("seeds", "group")`, we can normalize over both and compare the results later (in this case, one needs to decide which measure will be used for the threshold setting though, by explicitly setting the `walk_score_measure`). Finally, we can give special meaning to the seed terms, either by always keeping them in the results, no matter their walk scores (`keep_seed_terms = TRUE`) or by giving them a pre-specified, fixed values to potentially rank them higher (`seedterm_value`). 
+```{r}
+rwr_terms <- get_rwr_terms(multiplex_text_network,
+                           network_name = NULL,
+                           seeds = seed_terms,
+                           seed_var = "feature",
+                           match_var = NULL,
+                           flatten_results = TRUE,
+                           group_name = "ministry_name",
+                           positive_scores_only = FALSE,
+                           normalize_score = "seeds",
+                           walk_score = 0.9,
+                           walk_score_quantile = TRUE,
+                           report_quantiles = TRUE,
+                           walk_score_measure = "seeds_mean",
+                           calculate_means = TRUE,
+                           normalize_means = TRUE,
+                           reduce_to_means = TRUE,
+                           keep_seed_terms = TRUE,
+                           seedterm_value = NULL,
+                           progress = FALSE)
+```
+
+Finally, we can retrieve the documents associated with the seed terms of each ministry, by classifying documents based on the terms retrieved via the random walks. Some of the options in the `classify_documents()` function regarding cutoffs and the handling of seed terms are practically equivalent to the options in `get_rwr_terms()`. This is on purpose and allows user to more easily play around with different setting for best results, without having to re-conduct the random walks every time (note that the options set here mirror the behavior of `get_rwr_terms()` above). The scores for each document can, again, be normalized for better interpretability, this time over the group (e.g. the ministry) to retrieve the most meaningful documents, or within each document, which would give the association of each document with each (in this case) ministry. In practice, we found that for short documents such as tweets the `group` normalization works well, while longer documents such as news articles benefit from the `doc` option. If multiple `walk_score_measures` have been calculated in `get_rwr_terms()` (e.g. means for seeds and groups), one can play around with the `classification_measure` option, to examine the feasibility of different approaches. Additionally, options for minimum results per group (comparable to the settings in `get_seed_terms()`) and the cutting of terms occuring across all groups are provided with `minimum_results` and `cut_frequent_group_terms`, respectively. Finally, the options to `return_walk_terms` and `return_unclassified_docs` help in evaluating results (see below), but their return can be superfluous in dedicated workflows.
+```{r}
+classified_documents <- classify_documents(walk_terms = rwr_terms,
+                                           group_name = "ministry_name",
+                                           document_tokens = de_pol_twitter_reduced,
+                                           tokens_var = "lemma",
+                                           doc_id = "doc_id",
+                                           classification_measure = "ScoreNormMean",
+                                           classification_cutoff = NULL,
+                                           keep_seed_terms = TRUE,
+                                           seedterm_value = NULL,
+                                           normalize_scores = "group",
+                                           cutoff_value = NULL,
+                                           cutoff_quantile = FALSE,
+                                           cutoff_normalized_scores = TRUE,
+                                           minimum_results = NULL,
+                                           cut_frequent_group_terms = NULL, 
+                                           return_walk_terms = TRUE,
+                                           return_unclassified_docs = TRUE,
+                                           verbose = TRUE)
+
+classified_documents$classified_documents # note that this only returns the doc IDs, grouping variable and scores
+```
+
+In order to examine results and see how well our approach fared, we first want to look at the documents *not* classified. We can switch between the modes `print`, to get a quick glimpse, and `return` to get a data frame. Note that we need to provide the full documents, as the random walks and classification only carry the necessary variables.
+```{r}
+get_unclassified_documents(classification_result = classified_documents,
+                           documents = de_pol_twitter %>% # as we do not have the full text, we simply add all lemmas together for content
+                             dplyr::summarise(content = paste(lemma, collapse = ","), 
+                                              .by = doc_id),
+                           doc_id = "doc_id",
+                           n = 20,
+                           mode = "print")
+```
+
+Now, let's take a look at the top documents associated with the policy areas of each ministry. The handling is practically identical to the `get_unclassified_documents()` function.
+```{r}
+top_group_documents(classification_result = classified_documents,
+                    documents = de_pol_twitter %>% dplyr::summarise(content = paste(lemma, collapse = ","), .by = doc_id),
+                    doc_id = "doc_id",
+                    group_name = "ministry_name",
+                    classification_score = "score_norm",
+                    n = 20,
+                    with_ties = FALSE,
+                    mode = "print")
+```
+
+Not bad! There may be some outliers (which look like right-wing issue capture), but considering we only had a pretty small sample of rather unstructured data, the results give a good idea what happened in these policy areas over the week. Now, let's see what the top terms associated with each ministry's policy area by the wider political twittersphere are. Again, this seems like a very reasonabl approximation to these policy areas and their sub-topics. Note that apart from the score indicator, the data also indicates of a term was a seed term or not. And as we can see, seed terms are not always the most important entities, indicating that our approach is not overly dependent on the initial documents provided by the ministries. If we feel like a higher weight on the seed terms could improve results, though, we can just reclassify the documents and set a fixed `seedterm_value` in `classify_documents()` this time. Generally speaking, however, the strength of this approach is that it uses the seed terms as a starting point and gives a much wider picture, in this case moving from the "official" policy agenda of the ministries to the wider political sphere of all elected politicians and parties on German Twitter.
+```{r}
+top_group_terms(classification_result = classified_documents,
+                  group_name = "ministry_name",
+                  classification_measure =  "ScoreNormMean",
+                  include_seed_terms = TRUE,
+                  n = 20,
+                  with_ties = TRUE,
+                  mode = "print")
+
+```
+
+
+# 2) Topic Clusters
+
+What if we are not looking for particular patterns such as policy areas, but would like a completely unsupervised approach to extract topical clusters from the text graph? In this case, `textgraph`'s second major workflow comes in handy, as it allows to extract clusters of connected entities from the graph in a completely unsupervised fashion. Depending on the input data and the type of entities provided for the network, these clusters can resemble topics, issues, etc. In order to extract them, community detection algorithms are used. `textgraph` provides a flexible framework to apply the clustering algorithms provided by the [igraph package](https://r.igraph.org/) to a text graph and extract meaningful topics, including metrics, associated entities and documents. Additionally, it provides a workflow to extract time-dynamic topic clusters by splitting the data provided into snapshots, calculate clusters for each snapshot with an algorithm of choice, and match these snapshot clusters via [Memory Community Matching](https://github.com/philipplorenz/memory_community_matching).
+
+
+## 2.1) Static Topic Clusters
+
+Again, we use one week's worth of elected German politicians' tweets as an example data set, as this data comes with the package.
+```{r}
+data("de_pol_twitter")
+```
+
+Next up, we turn this data into a text co-occurrence network. The options here are somewhat similar to the workflow above: we need to provide the data, tell the function which variable is the feature (i.e. the entities / nodes in the network) and which indicates the document they occur in. Additionally, we can choose if we want to weigh this network by the features' PMI, and if we want to keep the potentially resulting negative edge weights. Finally, there's an option to return a dataframe rather than an igraph object - but this workflow expects an igraph object.
+```{r}
+text_network <- make_textnetwork(data = de_pol_twitter,
+                                document = "doc_id",
+                                feature = "lemma",
+                                pmi_weight = TRUE,
+                                as_data_frame = FALSE,
+                                keep_negative_weights = TRUE)
+```
+
+Now, we can run the topic calculation on this network. We can specify the `cluster_function` used for the topic clustering. In this case, we use the Leiden algorithm, but any algorithm provided by `igraph` works. Only note that not all clustering algorithms work with negative edge weights, in which case you can use `negative_edge_weights = FALSE` to drop them. We can additionally pass all the arguments of the `cluster_function` - in this case, we explicitly set the Leiden algorithm's `objective_function` to the Constant Potts Model (CPM). Finally, we can decide how to calculate the topic entities' page rank, which serve as a measure for importance within each topic. Available options are `"global"` for a calculation over the whole `text_network`, and `"cluster"` to split the network into a subnetwork for each topic and calculate the page ranks within these. The latter option can be somewhat slow, but is automatically parallelized if a `future::plan()` has been set up. The resulting `textgraph_topics` object contains several metrics (which are conveniently printed out here with `verbose = TRUE`), and overviews over topics and entities.
+```{r}
+topics <- calculate_topics(text_network,
+                          negative_edge_weights = TRUE,
+                          page_rank_calculation = "global",
+                          cluster_function = igraph::cluster_leiden,
+                          objective_function = "CPM",
+                          keep_cluster_object = FALSE,
+                          verbose = TRUE)
+```
+
+As these results can be somewhat unwieldy to interpret, `textgraph` provides a helper function to explore them. Here, it shows all topics with at least 0.1% of entities, their according topic proportions, and their (here) top ten terms. By specifying an `output_file`, we can save the provided HTML document. By setting it to `NULL`, the temporary document is opened in the default browser and then discarded.
+
+```{r}
+explore_topics(textgraph_topics = topics,
+               topic_threshold = 0.001,
+               n_top_terms = 10,
+               output_file = NULL)
+
+```
+
+However, only getting the entities associated with each topic does not necessarily tell us a lot about the topical content. Therefore, `calculate_topics()` can incorporate document data and give us more meaningful statistics on topic occurrence in documents. Additionally, any and all metadata provided will be passed on for later analyses. Therefore, we start off by selecting the relevant metadata from our sample data. Here, we are interested in who authored a tweet, when it was created, what its URL is, and what party the author belongs to (if any). As there are a lot of small parties in the data set, we focus on the seven main parties in the German political system, and make dummy variables for the minor parties ("other") and those accounts not associated with any party ("none").
+```{r}
+main_parties <- de_pol_twitter %>% # we are mostly interested in the seven parties with the most tweets, which, unsurprisingly, are Germany's biggest parties
+  distinct(doc_id, party) %>% 
+  summarise(n = n(),.by = party) %>% 
+  filter(!is.na(party)) %>% 
+  slice_max(n, n = 7) %>% pull(party)
+
+topic_documents <- de_pol_twitter %>% # when passing document data...
+  select(doc_id, lemma, # ...we reduce the columns to the required variables...
+         created_at, author_id, party, tweet_url) %>%  #...and document (not token!) metadata
+  mutate(party = case_when(!(party %in% main_parties) ~ "other", # for all parties not among the big 7, we set the variable to "other"
+                           is.na(party) ~ "none", # for those accounts not associated with any party, we set it to "none"
+                           .default = party))
+```
+
+These documents can now be passed on to `calculate_topics()` via the `documents` argument. In this case, we also need to tell the function where to look for the document tokens and IDs. Note that results are identical to the previous topic calculations, but now provide additional information on documents, and topic occurrence in documents. A topic occurrence is counted as any topic-related entity occurring in a given document, and we can see from the metrics that the median number of documents associated with a topic is only 2, indicating quite a lot of small topics (this could be changed by changing the parameters of the clustering algorithm, or using a different algorithm altogether). Also note that the returned topic object now additionally contains a `documents` section, containing the documents, the entities they contain as well as all provided metadata, and their association with each topic. The `topic_relevance` provided here is currently implemented as the sum of all topic-related entities in a document's page rank, each multiplied by the entity's TF-IDF (Term Frequency-Inverse Document Frequency) for the document. Therefore, the `page_rank_calculation` directly affects documents' topic relevance, while also taking the relative relevance of a term in a document into account.
+```{r}
+topics_docs <- calculate_topics(text_network,
+                                documents = topic_documents,
+                                document_tokens = "lemma",
+                                document_ids = "doc_id",
+                                negative_edge_weights = TRUE,
+                                page_rank_calculation = "global",
+                                cluster_function = igraph::cluster_leiden,
+                                objective_function = "CPM",
+                                keep_cluster_object = FALSE,
+                                verbose = TRUE)
+```
+
+When document data has been provided, `explore_topics()` can make use of these, too, by returning a number (here: 5) of most relevant documents per topic. Even better, it can utilize the metadata provided as well. Specifically, it allows to plot topic occurrences in documents over time, if a `time_var` has been provided. If we did not provide reasonable time windows to plot the data, as in our case, the function can take care of this on the fly by flooring the `time_var` by a unit of our choosing, in this case, "days". What's more, we can split the plots and the documents by metadata of our choice. In this case, we want to see how prevalent the topics are over time for each party, and what each party's most associated topic documents are. Finally, we can provide the document text to be displayed. We do not have the full text in our data, so we use the tweet URL instead - as `explore_topics()` provides a HTML document, getting a link to click and open in the same browser is most convenient.
+```{r}
+explore_topics(textgraph_topics = topics_docs,
+               topic_threshold = 0.01,
+               n_top_terms = 10,
+               n_top_docs = 5,
+               time_var = "created_at", # we plot over time...
+               floor_time_var_by = "days", # ...by days
+               split_var = "party", # we want information for each party
+               text_var = "tweet_url", # instead of the text, we display the tweet URL
+               document_ids = "doc_id",
+               output_file = NULL)
+
+```
+
+## 2.2) Dynamic Topic Clusters
+
+If we work with data providing more than a week's worth of data, but rather long time frames, it can be worthwhile to calculate topics not statically, for a single text graph, but dynamically, over multiple snapshots. For this purpose, dynamic community matching over snapshots has been implemented. As [Philipp Lorenz' original implementation](https://github.com/philipplorenz/memory_community_matching) of the matching method based on the Hungarian algorithm is implemented in Python, `textgraph` provides a convenient interface to integrate the Python algorithm into an R workflow. Therefore, a [Python](https://www.python.org/) installation is required. The package has been built under Python 3.8, but other versions might work, too. However, Python 3.8 or higher is strongly recommended. Additionally, [Reticulate](https://rstudio.github.io/reticulate/) is required for the R to Python interfacing.
+
+
+For demonstration purposes, we again use our twitter sample. Note, however, that for a sample of seven days this method is barely applicable, and it is recommended to use this method for significantly longer time frames, where topics are calculated for and matched between snapshots of weeks or months. Generally speaking, it should be carefully evaluated and compared which method provides better results for the given use case and data.
+```{r}
+data("de_pol_twitter")
+```
+
+In order to use the Community Matching algorithm, a Python environment with the necessary packages is required. `textgraph` provides a convenient way to set this up, utilizing the `Reticulate` package. If not additional arguments are provided, `install_community_matching()` sets up a virtual python environment named "textgraph" which can be used for `calculate_dynamic_topics()`. If an `envname` is provided here, you can also set it up as any other environment. If you decide to install the dependancies required by `textgraph` into an existing Reticulate environment, it can be helpful to set `install_dependencies = FALSE`, as in this case the specifically set versions of packages `Pandas`, `Numpy`, and `Scipy` are not installed into the environment, and the function only clones the necessary git repository into the environment. If you do this however, you should know what you're doing - it is highly recommended to simply call the default `install_community_matching()` settings and use the "textgraph" environment only for `calculate_dynamic_topics()`.
+```{r}
+install_community_matching()
+```
+
+As the calculation of snapshots can be rather time consuming, `textgraph` provides functionality to parallelize this process. Again, this can conveniently be done with `future::plan()`. If you want to process large datasets, now would be a godd time to set up such a plan, e.g. with 
+```{r}
+# future::plan("future::multisession")
+```
+
+Now, we are ready to calculate dynamic topics. The `calculate_dynamic_topics()` practically combines the functions `make_textnetwork()` and `calculate_topics()`, by making a network snapshot for each time frame, and then calculating topics within via the provided algorithm, before matching the topics between snapshots. Therefore, most arguments are similar to these functions. However, we need to specify a `timeframe` variable over which to make the snapshots. Here we use the `day` variable, which we make on the fly with some simple tidyverse mutations. Additionally, we need to specify the length of the `lookback`, i.e. how many previous snapshots should be considered in the matching. Here we pick 3, meaning that the previous three days are considered to match topics between snapshots. For `page_rank_calculation()`, there is now the option `"avg"`, which simply averages each entity's page rank over the snapshots. `"global"` and `"cluster"` work as before, either calculating the entities' global page rank over the full network, or making subgraphs for each temporal topic from the full network before calculating the page rank. Note that the provision of documents via `full_documents` is again optional, but will provide additional information. In this case, we use the same documents as before. Finally, there is an option to omit the topic matching step. This can be helpful when processing large data sets and evaluating different clustering settings before proceeding to the (potentially computationally expensive) matching step. If `match_clusters = FALSE`, no Python installation is required. Note that the metrics returned by the fucntion now contain statistics on the snapshot clustering, including a plot displaying the modularity or quality of the clustering (depending on the algorithm used, as the "quality" metric is specific to the Leiden algorithm) and the number of topics in each snapshot.
+```{r}
+dynamic_topics <- calculate_dynamic_topics(
+  data = de_pol_twitter %>% 
+    dplyr::mutate(day = lubridate::floor_date(created_at, unit = "days")),
+  document = "doc_id", 
+  feature = "lemma", 
+  timeframe = "day", 
+  lookback = 3,
+  full_documents = topic_documents,
+  pmi_weight = TRUE, 
+  negative_edge_weights = TRUE, 
+  page_rank_calculation = "avg",
+  cluster_function = igraph::cluster_leiden,
+  match_clusters = TRUE,
+  python_env = "textgraph")
+```
+
+To explore these temporal topics, we can again use the `explore_topics()` function. The arguments are the same as before, the only difference is that the topics displayed are now time-dynamic, rather than static.
+
+```{r}
+explore_topics(textgraph_topics = dynamic_topics,
+               topic_threshold = 0.005,
+               n_top_terms = 10,
+               n_top_docs = 5,
+               time_var = "created_at", # we plot over time...
+               floor_time_var_by = "days", # ...by days
+               split_var = "party", # we want information for each party
+               text_var = "tweet_url", # instead of the text, we display the tweet URL
+               document_ids = "doc_id",
+               output_file = NULL)
+```
