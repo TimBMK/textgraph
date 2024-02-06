@@ -10,6 +10,7 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
+  eval = FALSE,
   comment = "#>"
 )
 ```
@@ -27,7 +28,7 @@ It is recommended to build the text graphs out of entities of interest, e.g. nam
 `textgraph` was built for the processing of very large graphs, with documents in the millions. Where applicable, it provides functionality for parallel computing via the **future** and **furrr** packages. This means that it is sufficient to set up a `future::plan()` to make use of the package's parallel processing capabilities. See `?future::plan` for details on how to set up a plan. However, depending on the size of the graphs processed, and the machine used, RAM *can* become a potential bottleneck. In this case it is recommended to reduce the size of the graphs by reducing the number of entities fed into the graph, for which `textgraph` provides some functionality.
 
 
-```{r setup}
+```{r setup, message=FALSE}
 library(textgraph)
 library(tidyverse) # we use the tidyverse for some data cleaning functionality
 ```
@@ -89,7 +90,7 @@ multiplex_text_network <- make_multiplex_objects(de_pol_twitter_reduced,
 
 If we want to process large data, now would be a good time to set up a multisession with `future::plan()`. The number of workes can be specified with the option `workers = ...`. The `get_rwr_terms()` function will then automatically make use of all the workers provided to calculate the random walks. Note, however, that, for large networks, you need to make sure to provide enough RAM for the subprocesses, as the networks exported to them can get large - and subprocesses running out of RAM can fail rather ungracefully, without providing much info on their failure.
 ```{r}
-# future::plan("future::multisession")
+future::plan("future::multisession")
 ```
 
 Now, we are ready to calculate the random walks and extract the associated terms. As the random walk process returns a score for each seed node's connection to *all* other terms in the network, it is advised to set a minimum `walk_score` below which connections are discarded as irrelevant. Without a `walk_score`, the returned objects can get *very* big for large networks. Again, functionality is provided to use quantiles within each group, rather than flat values, and reports on these quantiles are issued with `report_quantiles = TRUE`. Additionally, there are a number of options to normalize the raw, hard to interpret walk scores, such as calculating and normalizing means over individual seeds or the groups. Note that by setting `normalize_score = c("seeds", "group")`, we can normalize over both and compare the results later (in this case, one needs to decide which measure will be used for the threshold setting though, by explicitly setting the `walk_score_measure`). Finally, we can give special meaning to the seed terms, either by always keeping them in the results, no matter their walk scores (`keep_seed_terms = TRUE`) or by giving them a pre-specified, fixed values to potentially rank them higher (`seedterm_value`). 
@@ -251,7 +252,7 @@ topics_docs <- calculate_topics(text_network,
 When document data has been provided, `explore_topics()` can make use of these, too, by returning a number (here: 5) of most relevant documents per topic. Even better, it can utilize the metadata provided as well. Specifically, it allows to plot topic occurrences in documents over time, if a `time_var` has been provided. If we did not provide reasonable time windows to plot the data, as in our case, the function can take care of this on the fly by flooring the `time_var` by a unit of our choosing, in this case, "days". What's more, we can split the plots and the documents by metadata of our choice. In this case, we want to see how prevalent the topics are over time for each party, and what each party's most associated topic documents are. Finally, we can provide the document text to be displayed. We do not have the full text in our data, so we use the tweet URL instead - as `explore_topics()` provides a HTML document, getting a link to click and open in the same browser is most convenient.
 ```{r}
 explore_topics(textgraph_topics = topics_docs,
-               topic_threshold = 0.01,
+               topic_threshold = 0.001,
                n_top_terms = 10,
                n_top_docs = 5,
                time_var = "created_at", # we plot over time...
@@ -280,10 +281,10 @@ install_community_matching()
 
 As the calculation of snapshots can be rather time consuming, `textgraph` provides functionality to parallelize this process. Again, this can conveniently be done with `future::plan()`. If you want to process large datasets, now would be a godd time to set up such a plan, e.g. with 
 ```{r}
-# future::plan("future::multisession")
+future::plan("future::multisession")
 ```
 
-Now, we are ready to calculate dynamic topics. The `calculate_dynamic_topics()` practically combines the functions `make_textnetwork()` and `calculate_topics()`, by making a network snapshot for each time frame, and then calculating topics within via the provided algorithm, before matching the topics between snapshots. Therefore, most arguments are similar to these functions. However, we need to specify a `timeframe` variable over which to make the snapshots. Here we use the `day` variable, which we make on the fly with some simple tidyverse mutations. Additionally, we need to specify the length of the `lookback`, i.e. how many previous snapshots should be considered in the matching. Here we pick 3, meaning that the previous three days are considered to match topics between snapshots. For `page_rank_calculation()`, there is now the option `"avg"`, which simply averages each entity's page rank over the snapshots. `"global"` and `"cluster"` work as before, either calculating the entities' global page rank over the full network, or making subgraphs for each temporal topic from the full network before calculating the page rank. Note that the provision of documents via `full_documents` is again optional, but will provide additional information. In this case, we use the same documents as before. Finally, there is an option to omit the topic matching step. This can be helpful when processing large data sets and evaluating different clustering settings before proceeding to the (potentially computationally expensive) matching step. If `match_clusters = FALSE`, no Python installation is required. Note that the metrics returned by the fucntion now contain statistics on the snapshot clustering, including a plot displaying the modularity or quality of the clustering (depending on the algorithm used, as the "quality" metric is specific to the Leiden algorithm) and the number of topics in each snapshot.
+Now, we are ready to calculate dynamic topics. The `calculate_dynamic_topics()` practically combines the functions `make_textnetwork()` and `calculate_topics()`, by making a network snapshot for each time frame, and then calculating topics within via the provided algorithm, before matching the topics between snapshots. Therefore, most arguments are similar to these functions. However, we need to specify a `timeframe` variable over which to make the snapshots. Here we use the `day` variable, which we make on the fly with some simple tidyverse mutations. Additionally, we need to specify the length of the `lookback`, i.e. how many previous snapshots should be considered in the matching. Here we pick 3, meaning that the previous three days are considered to match topics between snapshots. For `page_rank_calculation()`, there is now the option `"avg"`, which simply averages each entity's page rank over the snapshots. `"global"` and `"cluster"` work as before, either calculating the entities' global page rank over the full network, or making subgraphs for each temporal topic from the full network before calculating the page rank. Note that the provision of documents via `full_documents` is again optional, but will provide additional information. In this case, we use the same documents as before. Finally, there is an option to omit the topic matching step. This can be helpful when processing large data sets and evaluating different clustering settings before proceeding to the (potentially computationally expensive) matching step. If `match_clusters = FALSE`, no Python installation is required. Note that the metrics returned by the function now contain statistics on the snapshot clustering, including a plot displaying the modularity or quality of the clustering (depending on the algorithm used, as the "quality" metric is specific to the Leiden algorithm) and the number of topics in each snapshot.
 ```{r}
 dynamic_topics <- calculate_dynamic_topics(
   data = de_pol_twitter %>% 
