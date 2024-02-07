@@ -70,6 +70,7 @@
 #' @importFrom igraph cluster_leiden page_rank
 #' @importFrom ggplot2 ggplot labs geom_point aes
 #' @importFrom tibble tibble rownames_to_column
+#' @importFrom rlang quo quo_name
 #'
 #'
 #' @export
@@ -151,7 +152,10 @@ calculate_dynamic_topics <- function(data,
   }
 
   if (!is.null(full_documents)) {
-    exists(full_documents)
+    obj <- rlang::quo_name(rlang::quo(full_documents))
+    if (!(exists(obj))) {
+      stop(paste0("object '", obj, "' not found"))
+    }
   }
 
 
