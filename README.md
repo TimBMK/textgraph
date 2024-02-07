@@ -16,7 +16,7 @@ is handled via the [igraph](https://github.com/igraph/rigraph/) library. Random 
 `textgraph` is not currently on CRAN. Therefore, it needs to be installed directly from Github.
 ```R
 # install.packages("remotes")
-remotes::install_github("TimBMK/textgraph")
+remotes::install_github("TimBMK/textgraph", build_vignettes = TRUE)
 ```
 
 ## Usage
