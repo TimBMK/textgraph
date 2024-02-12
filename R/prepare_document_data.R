@@ -14,7 +14,7 @@
 #' @importFrom tidytext bind_tf_idf
 #' @importFrom scales rescale
 #' @importFrom tidyselect everything
-#' @importFrom data.table as.data.table setkeyv merge.data.table setorder .N
+#' @importFrom data.table as.data.table setkeyv merge.data.table setorder
 #'
 #' @keywords internal
 
@@ -42,7 +42,7 @@ prepare_document_data <- function(topics,
 
   documents <- data.table::as.data.table(documents)
 
-  tf_idf <- documents[ , data.table::.N, by = c(document_tokens, document_ids)] %>%  # count duplicated entities
+  tf_idf <- documents[ , .N, by = c(document_tokens, document_ids)] %>%  # count duplicated entities
     tidytext::bind_tf_idf(!!as.name(document_tokens), !!as.name(document_ids), N) %>%  # calculate tf-idf
     dplyr::rename(entity = !!as.name(document_tokens))
 
