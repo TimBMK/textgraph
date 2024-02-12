@@ -30,27 +30,35 @@ prepare_document_data <- function(topics,
     dplyr::rename(entity = !!as.name(document_tokens)) %>%
     data.table::as.data.table()
 
-  data.table::setkeyv(join_dat, "entity")
-
   topics <- data.table::as.data.table(topics)
 
+  data.table::setkeyv(join_dat, "entity")
   data.table::setkeyv(topics, "entity")
 
-  tf_idf <- data.table::merge.data.table(topics, join_dat, by = "entity", allow.cartesian = T)
+  dat <- data.table::merge.data.table(topics, join_dat, by = "entity",
+                                         allow.cartesian = T) # allows to join large data with entities belonging to multiple topics and occurring in multiple docs
 
-  invisible(gc())
+  invisible(gc()) # run gc() after a cartesian join
 
-  tf_idf <- tf_idf[ , .N, by = c("entity", document_ids, "topic", "page_rank")] # count duplicated entities
+  documents <- data.table::as.data.table(documents)
 
-  tf_idf <- tf_idf %>%
-    tidytext::bind_tf_idf(entity, !!as.name(document_ids), N) %>% # calculate tf-idf
+  tf_idf <- documents[ , .N, by = c(document_tokens, document_ids)] %>%  # count duplicated entities
+    tidytext::bind_tf_idf(!!as.name(document_tokens), !!as.name(document_ids), N) %>%  # calculate tf-idf
+    dplyr::rename(entity = !!as.name(document_tokens))
+
+  data.table::setkeyv(dat, c("entity", document_ids))
+  data.table::setkeyv(tf_idf, c("entity", document_ids))
+
+  dat <- data.table::merge.data.table(dat, tf_idf, by = c("entity", document_ids))
+
+  dat <- dat %>% # calculate term relevance
     dplyr::mutate(page_rank = dplyr::case_when(is.na(page_rank) ~ 0, # set missing page ranks to 0 (missing if a term has no connection to other terms in page_rank = "cluster")
                                                .default = page_rank)) %>%
     dplyr::mutate(term_relevance = (tf_idf * page_rank) %>% # calculate topic term relevance as normalized (tf_idf * page_rank)
                     scales::rescale(to = c(0, 1)), # rescale
                   .by = topic)
 
-  document_data <- tf_idf[ , .(entities = list(entity),# summarise entities and document relevance
+  document_data <- dat[ , .(entities = list(entity),# summarise entities and document relevance. list(entity) is surprisingly costly (but faster than paste())
                                document_relevance = sum(term_relevance)),
                            by = c("topic", document_ids)]
 
@@ -58,10 +66,11 @@ prepare_document_data <- function(topics,
                                                          to = c(0,100)),
                  by = "topic"]
 
-  data.table::setorder(document_data, topic, -document_relevance)
+  data.table::setorder(document_data, topic, -document_relevance) # order
 
+  invisible(gc()) # run gc() to clear memory
 
-  join_dat <- documents %>% # prepare 2nd join
+  join_dat <- documents %>% # prepare 2nd join for additional metadata
     dplyr::select(!(!!as.name(document_tokens))) %>%
     dplyr::distinct(!!as.name(document_ids),
                     .keep_all = TRUE) %>%
