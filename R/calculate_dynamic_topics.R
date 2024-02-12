@@ -66,7 +66,7 @@
 #' @importFrom furrr future_map furrr_options
 #' @importFrom purrr imap map
 #' @importFrom reticulate use_virtualenv source_python py_capture_output
-#' @importFrom data.table as.data.table rbindlist
+#' @importFrom data.table as.data.table rbindlist setkeyv setorder merge.data.table
 #' @importFrom igraph cluster_leiden page_rank
 #' @importFrom ggplot2 ggplot labs geom_point aes
 #' @importFrom tibble tibble rownames_to_column
@@ -498,23 +498,23 @@ calculate_dynamic_topics <- function(data,
   }
 
   # make topic overviews
-  topic_overview <- topics[ , .(nr_entities = data.table::.N), by = "topic"]
+  topic_overview <- data.table::as.data.table(topics)[ , .(nr_entities = .N),
+                                                       by = "topic"]
 
-  data.table::setorder(document_data, topic, -document_relevance) # order
-
-
-    topics %>%
-    dplyr::summarise(nr_entities = dplyr::n(), .by = topic) %>%
-    dplyr::arrange(dplyr::desc(nr_entities))
+  data.table::setorder(topic_overview, -nr_entities) # order
 
   if (!is.null(full_documents)) {
-    document_overview <- document_data %>%
-      dplyr::summarise(document_occurrences = dplyr::n(),
-                       .by = topic)
+    document_overview <- data.table::as.data.table(document_data)[ , .(document_occurrences = .N),
+                                                                   by = "topic"]
 
-    topic_overview <- topic_overview %>%
-      dplyr::left_join(document_overview, by = "topic") %>%
-      dplyr::arrange(dplyr::desc(document_occurrences)) # overwrite ordering
+    data.table::setkeyv(topic_overview, "topic") # set keys for efficient join
+    data.table::setkeyv(document_overview, "topic")
+
+    topic_overview <- data.table::merge.data.table(topic_overview,
+                                                   document_overview,
+                                                   by = "topic")
+
+    data.table::setorder(topic_overview, -document_occurrences) # overwrite ordering
 
     # additional metrics
     mean_document_occurrences <- mean(topic_overview$document_occurrences)
