@@ -498,7 +498,12 @@ calculate_dynamic_topics <- function(data,
   }
 
   # make topic overviews
-  topic_overview <- topics %>%
+  topic_overview <- topics[ , .(nr_entities = data.table::.N), by = "topic"]
+
+  data.table::setorder(document_data, topic, -document_relevance) # order
+
+
+    topics %>%
     dplyr::summarise(nr_entities = dplyr::n(), .by = topic) %>%
     dplyr::arrange(dplyr::desc(nr_entities))
 
