@@ -18,7 +18,7 @@
 #' @importFrom utils untar
 #' @importFrom data.table as.data.table
 #'
-load_textgraph_topics <- function(file, verbose) {
+load_textgraph_topics <- function(file, verbose = TRUE) {
 
   temp <- tempdir() # temp folder to build the object
 

@@ -24,7 +24,7 @@
 #'
 save_textgraph_topics <- function(textgraph_topics,
                                   file,
-                                  verbose) {
+                                  verbose = TRUE) {
 
   # Data checks
   if (class(textgraph_topics) != "textgraph_topics") {
