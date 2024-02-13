@@ -39,7 +39,7 @@ Imports:
     RandomWalkRestartMH (>= 1.13.1),
     knitr (>= 1.39),
     rmarkdown (>= 2.14),
-    data.table (>= 1.14.2)
+    data.table (>= 1.14.2),
     vroom (>= 1.6.1)
 Remotes: alberto-valdeolivas/RandomWalkRestartMH
 VignetteBuilder: knitr
