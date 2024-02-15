@@ -4,7 +4,7 @@
 \alias{save_textgraph_topics}
 \title{Save textgraph topics}
 \usage{
-save_textgraph_topics(textgraph_topics, file, verbose)
+save_textgraph_topics(textgraph_topics, file, verbose = TRUE)
 }
 \arguments{
 \item{textgraph_topics}{The topics object to save}

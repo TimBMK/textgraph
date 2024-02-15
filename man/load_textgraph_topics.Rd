@@ -4,7 +4,7 @@
 \alias{load_textgraph_topics}
 \title{Load textgraph topics}
 \usage{
-load_textgraph_topics(file, verbose)
+load_textgraph_topics(file, verbose = TRUE)
 }
 \arguments{
 \item{file}{The `.tar.gz` file to load}

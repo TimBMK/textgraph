@@ -17,6 +17,7 @@
 #' @importFrom vroom vroom
 #' @importFrom utils untar
 #' @importFrom data.table as.data.table
+#' @importFrom ggplot2 ggplot aes geom_point labs
 #'
 load_textgraph_topics <- function(file, verbose = TRUE) {
 
@@ -24,7 +25,7 @@ load_textgraph_topics <- function(file, verbose = TRUE) {
 
   utils::untar(tarfile = file, exdir = temp)
 
-  path <- file.path(temp, "textgraph_topics")
+  path <- file.path(temp, ".textgraph_topics")
 
   textgraph_topics <- list()
 
@@ -33,6 +34,29 @@ load_textgraph_topics <- function(file, verbose = TRUE) {
                                            progress = verbose,
                                            show_col_types = FALSE) %>%
     as.list()
+
+  if (file.exists(file.path(path, "plot_data.tar.gz"))){ # check if there is plot data
+    plot_data <- vroom::vroom(file.path(path, "plot_data.tar.gz"),
+                              progress = verbose,
+                              show_col_types = FALSE)
+
+    plot <- plot_data %>% # recreate plot skeleton
+      ggplot2::ggplot(ggplot2::aes(x = nr_topics, color = snapshot)) +
+      theme_bw()
+
+    if (is.numeric(plot_data$quality)) { # draw metrics-specific plot
+      textgraph_topics$metrics$snapshot_plot <- plot +
+        ggplot2::geom_point(ggplot2::aes(y = quality)) +
+        ggplot2::labs(title = "Quality and Entities of Topics in Snapshots")
+    }
+
+    if (is.numeric(plot_data$modularity)) { # draw metrics-specific plot
+      textgraph_topics$metrics$snapshot_plot <- plot +
+        ggplot2::geom_point(ggplot2::aes(y = modularity)) +
+        ggplot2::labs(title = "Modularity and Entities of Topics in Snapshots")
+    }
+
+  }
 
   if (verbose) cat("Load Topics...\n")
   textgraph_topics$topics <- vroom::vroom(file.path(path, "topics.tar.gz"),

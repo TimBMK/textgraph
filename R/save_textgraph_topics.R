@@ -35,14 +35,22 @@ save_textgraph_topics <- function(textgraph_topics,
 
   # path <- file.path(temp, "textgraph")
 
-  path <- "textgraph_topics" # temporary directory (using an actual tempdir() makes the file paths within the tar object very long and hard to recreate)
+  path <- ".textgraph_topics" # temporary directory (using an actual tempdir() makes the file paths within the tar object very long and hard to recreate)
 
   dir.create(path)
 
   if (verbose) cat("Save Metrics...\n")
-  vroom::vroom_write(x = textgraph_topics$metrics %>% tibble::as_tibble(), # from list to tibble before saving
+  vroom::vroom_write(x = textgraph_topics$metrics[!names(textgraph_topics$metrics) # drop plot if it's there
+                                                  %in% "snapshot_plot"] %>%
+                       tibble::as_tibble(), # from list to tibble before saving
                      progress = verbose,
                      file = file.path(path, "metrics.tar.gz"))
+
+  if ("snapshot_plot" %in% names(textgraph_topics$metrics)) {
+    vroom::vroom_write(x = textgraph_topics$metrics$snapshot_plot$data, # save plot data
+                       progress = verbose,
+                       file = file.path(path, "plot_data.tar.gz"))
+  }
 
   if (verbose) cat("Save Topics...\n")
   vroom::vroom_write(x = textgraph_topics$topics,
