@@ -38,6 +38,8 @@ save_textgraph_topics <- function(textgraph_topics,
 
   path <- ".textgraph_topics" # temporary directory (using an actual tempdir() makes the file paths within the tar object very long and hard to recreate)
 
+  if (dir.exists(path)) unlink(path, recursive = TRUE) # remove temp directory if it already exists
+
   dir.create(path)
 
   if (verbose) cat("Save Metrics...\n")
