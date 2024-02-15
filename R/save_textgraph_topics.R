@@ -21,6 +21,7 @@
 #' @importFrom vroom vroom_write
 #' @importFrom tibble as_tibble
 #' @importFrom utils tar
+#' @importFrom data.table as.data.table
 #'
 save_textgraph_topics <- function(textgraph_topics,
                                   file,
@@ -66,10 +67,23 @@ save_textgraph_topics <- function(textgraph_topics,
 
     if (verbose) cat("Save Documents...\n")
 
+    dir.create(file.path(path, "documents"))
+
     textgraph_topics$documents %>%
-      tidyr::unnest(cols = entities) %>%
-      vroom::vroom_write(file = file.path(path, "documents.tar.gz"),
-                         progress = verbose)
+      data.table::as.data.table() %>%
+      split(by = "topic") %>%  # split into topics and write topics seperately (more stable for large data)
+      purrr::iwalk(\(data, topic)
+                   { data %>%
+                       tidyr::unnest(cols = entities) %>%
+                       vroom::vroom_write(file = file.path(path,
+                                                           "documents",
+                                                           paste0(
+                                                             topic, ".tar.gz"
+                                                           )),
+                                          progress = FALSE)
+
+      }, .progress = verbose)
+
   }
 
   utils::tar(tarfile = file,

@@ -72,7 +72,7 @@ load_textgraph_topics <- function(file, verbose = TRUE) {
 
     if (verbose) cat("Load Documents...\n")
 
-    textgraph_topics$documents <- vroom::vroom(file.path(path, "documents.tar.gz"),
+    textgraph_topics$documents <- vroom::vroom(list.files(file.path(path, "documents"), full.names = T), # read docs for each topic
                                                progress = verbose,
                                               col_types =  "c") %>% # assuming the first col is the ID - which should always be the case
       data.table::as.data.table()
