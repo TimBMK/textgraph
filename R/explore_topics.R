@@ -96,6 +96,7 @@ explore_topics <- function(
     output_dir <- NULL
   } else {
     output_dir <- getwd()
+    no_output <- FALSE
   }
 
   rmarkdown::render(
