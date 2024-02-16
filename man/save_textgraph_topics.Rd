@@ -4,14 +4,24 @@
 \alias{save_textgraph_topics}
 \title{Save textgraph topics}
 \usage{
-save_textgraph_topics(textgraph_topics, file, verbose = TRUE)
+save_textgraph_topics(
+  textgraph_topics,
+  file,
+  include_document_entities = TRUE,
+  verbose = TRUE
+)
 }
 \arguments{
-\item{textgraph_topics}{The topics object to save}
+\item{textgraph_topics}{The textgraph_topics object to save}
 
-\item{file}{The `.tar.gz` file to save to}
+\item{file}{String; the `.tar.gz` file to save to}
 
-\item{verbose}{Verbosity}
+\item{include_document_entities}{Logical; Should the entities attached to the document data
+get saved? Saving them can be helpful for future analyses;
+excluding them can speed up the save/load process and save
+disk space}
+
+\item{verbose}{Logical; sets Verbosity}
 }
 \value{
 writes the object under the specified `file` path. If no path is

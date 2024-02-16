@@ -3,9 +3,13 @@
 #' A function to save the textgraph_topics object created by `calculate_topics()`
 #'   or `calculate_dynamic_topics()`. Will save as `.tar.gz` file
 #'
-#' @param textgraph_topics The topics object to save
-#' @param file The `.tar.gz` file to save to
-#' @param verbose Verbosity
+#' @param textgraph_topics The textgraph_topics object to save
+#' @param file String; the `.tar.gz` file to save to
+#' @param verbose Logical; sets Verbosity
+#' @param include_document_entities Logical; Should the entities attached to the document data
+#'                                   get saved? Saving them can be helpful for future analyses;
+#'                                   excluding them can speed up the save/load process and save
+#'                                   disk space
 #'
 #' @return writes the object under the specified `file` path. If no path is
 #'          specified, writes the file to the current working directory
@@ -25,6 +29,7 @@
 #'
 save_textgraph_topics <- function(textgraph_topics,
                                   file,
+                                  include_document_entities = TRUE,
                                   verbose = TRUE) {
 
   # Data checks
@@ -75,14 +80,19 @@ save_textgraph_topics <- function(textgraph_topics,
       data.table::as.data.table() %>%
       split(by = "topic") %>%  # split into topics and write topics seperately (more stable for large data)
       purrr::iwalk(\(data, topic)
-                   { data %>%
-                       tidyr::unnest(cols = entities) %>%
-                       vroom::vroom_write(file = file.path(path,
-                                                           "documents",
-                                                           paste0(
-                                                             topic, ".tar.gz"
-                                                           )),
-                                          progress = FALSE)
+                   { if (include_document_entities) {
+                     res <- data %>%
+                       tidyr::unnest(cols = entities)
+                   } else {
+                     res <- data %>% dplyr::select(!entities)
+                   }
+                     vroom::vroom_write(x = res,
+                                        file = file.path(path,
+                                                         "documents",
+                                                         paste0(
+                                                           topic, ".tar.gz"
+                                                         )),
+                                        progress = FALSE)
 
       }, .progress = verbose)
 

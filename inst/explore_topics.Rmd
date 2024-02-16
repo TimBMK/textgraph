@@ -214,11 +214,13 @@ for (topic in topics$topic) {
           
           cat("\n\n")
           
-          cat("\n*Entities:",
-              tab_documents %>% dplyr::pull(entities) %>% .[[i]],
-              "*")
-          
-          cat("\n\n")
+          try({ # try() in case there are no entities - e.g. when they were not included in save_textgraph_topics()
+            cat("\n*Entities:",
+                tab_documents %>% dplyr::pull(entities) %>% .[[i]],
+                "*")
+            
+            cat("\n\n") 
+          })
           
           if (!is.null(time_var)){
             cat(paste0("*", time_var,":"),

@@ -16,7 +16,7 @@
 #' @importFrom dplyr "%>%"
 #' @importFrom vroom vroom
 #' @importFrom utils untar
-#' @importFrom data.table as.data.table
+#' @importFrom data.table as.data.table rbindlist
 #' @importFrom ggplot2 ggplot aes geom_point labs
 #'
 load_textgraph_topics <- function(file, verbose = TRUE) {
@@ -68,19 +68,33 @@ load_textgraph_topics <- function(file, verbose = TRUE) {
                                             progress = verbose,
                                           show_col_types = FALSE)
 
-  if (file.exists(file.path(path, "documents.tar.gz"))){ # check if there are documents
+  if (file.exists(file.path(path, "documents"))){ # check if there are documents
 
     if (verbose) cat("Load Documents...\n")
 
-    textgraph_topics$documents <- vroom::vroom(list.files(file.path(path, "documents"), full.names = T), # read docs for each topic
-                                               progress = verbose,
-                                              col_types =  "c") %>% # assuming the first col is the ID - which should always be the case
-      data.table::as.data.table()
+    textgraph_topics$documents <- list.files(file.path(path, "documents"),
+                                             full.names = T) %>%
+      purrr::map(\(file) # split the read-in to avoid errors with too many open connections
+                 { dat <- vroom::vroom(file, # read docs for each topic
+                                progress = FALSE,
+                                col_types =  "c") %>% # assuming the first col is the ID - which should always be the case
+                     data.table::as.data.table()
 
-    document_ids <- colnames(textgraph_topics$documents)[1] # get name of ID col
+                   if ("entities" %in% names(dat)) { # ensure same column type for entities if they exist in the data
+                     dat <- dat %>%
+                       dplyr::mutate(entities = as.character(entities))
+                   }
+                   return(dat)
+                   }, .progress = verbose) %>%
+      data.table::rbindlist()
 
-    textgraph_topics$documents <- textgraph_topics$documents[, .(entities = list(entities)), # make entities into list again list(entity) is surprisingly costly (but faster than paste())),
-                          by = c("topic", document_ids)]
+    if ("entities" %in% names(textgraph_topics$documents)) { # entities have been saved...
+
+      document_ids <- colnames(textgraph_topics$documents)[1] # get name of ID col
+
+      textgraph_topics$documents <- textgraph_topics$documents[, .(entities = list(entities)), # make entities into list again. list(entity) is surprisingly costly (but faster than paste())),
+                                                               by = c("topic", document_ids)]
+    }
   }
 
   unlink(path, recursive = TRUE)
