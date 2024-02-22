@@ -35,7 +35,7 @@ Imports:
     tidyr (>= 1.3.0),
     tidyselect (>= 1.2.0),
     tidytext (>= 0.3.4),
-    widyr (>= 0.1.5.9),
+    widyr (>= 0.1.5),
     RandomWalkRestartMH (>= 1.13.1),
     knitr (>= 1.39),
     rmarkdown (>= 2.14),
