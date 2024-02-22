@@ -87,7 +87,7 @@ filter_topics <- function(textgraph_topics,
     res$igraph_cluster <- igraph_cluster
   }
 
-  if ("igraph_cluster" %in% names(textgraph_topics)) { # add snapshots object
+  if ("snapshots" %in% names(textgraph_topics)) { # add snapshots object
     res$snapshots <- snapshots
   }
 
