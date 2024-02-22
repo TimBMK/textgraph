@@ -235,7 +235,7 @@ topic_documents <- de_pol_twitter %>% # when passing document data...
                            .default = party))
 ```
 
-These documents can now be passed on to `calculate_topics()` via the `documents` argument. In this case, we also need to tell the function where to look for the document tokens and IDs. Note that results are identical to the previous topic calculations, but now provide additional information on documents, and topic occurrence in documents. A topic occurrence is counted as any topic-related entity occurring in a given document, and we can see from the metrics that the median number of documents associated with a topic is only 2, indicating quite a lot of small topics (this could be changed by changing the parameters of the clustering algorithm, or using a different algorithm altogether). Also note that the returned topic object now additionally contains a `documents` section, containing the documents, the entities they contain as well as all provided metadata, and their association with each topic. The `topic_relevance` provided here is currently implemented as the sum of all topic-related entities in a document's page rank, each multiplied by the entity's TF-IDF (Term Frequency-Inverse Document Frequency) for the document. Therefore, the `page_rank_calculation` directly affects documents' topic relevance, while also taking the relative relevance of a term in a document into account.
+These documents can now be passed on to `calculate_topics()` via the `documents` argument. In this case, we also need to tell the function where to look for the document tokens and IDs. Note that results are identical to the previous topic calculations, but now provide additional information on documents, and topic occurrence in documents. A topic occurrence is counted as any topic-related entity occurring in a given document, and we can see from the metrics that the median number of documents associated with a topic is only 2, indicating quite a lot of small topics (this could be changed by changing the parameters of the clustering algorithm, or using a different algorithm altogether). Also note that the returned topic object now additionally contains a `documents` section, containing the documents, the entities they contain as well as all provided metadata, and their association with each topic. The `topic_relevance` provided here is the sum of all topic-related entities in a document's page rank, each multiplied by the entity's TF-IDF (Term Frequency-Inverse Document Frequency) for the document (`"pagerank_tfidf"`. Therefore, the `page_rank_calculation` directly affects documents' topic relevance, while also taking the relative relevance of a term in a document into account. An alternative approach is available via `network`, which calculates the Page Rank of each document in a topic-specific document-document network. 
 ```{r}
 topics_docs <- calculate_topics(text_network,
                                 documents = topic_documents,
@@ -245,6 +245,7 @@ topics_docs <- calculate_topics(text_network,
                                 page_rank_calculation = "global",
                                 cluster_function = igraph::cluster_leiden,
                                 objective_function = "CPM",
+                                document_relevance = "pagerank_tfidf",
                                 keep_cluster_object = FALSE,
                                 verbose = TRUE)
 ```
@@ -299,6 +300,7 @@ dynamic_topics <- calculate_dynamic_topics(
   page_rank_calculation = "avg",
   cluster_function = igraph::cluster_leiden,
   match_clusters = TRUE,
+  document_relevance = "pagerank_tfidf",
   python_env = "textgraph")
 ```
 

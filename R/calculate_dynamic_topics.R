@@ -34,6 +34,19 @@
 #' @param keep_cluster_objects Logical indicating whether to keep the igraph cluster object of each snapshot.
 #'  Can be helpful for additional checks. See `help(igraph::membership)`. Also returns clustering metrics for each snapshot cluster.
 #' @param keep_networks Logical indicating whether to keep the igraph network of each snapshot.
+#' #' @param document_relevance String; How the `document_relevance` of
+#'   topic-specific documents should be calculated (if they are provided).
+#'   "pagerank_tfidf" calculates the re-scaled sum of all topic-relevant
+#'   entities' Page Rank in the document multiplied by their tf-idf (Term
+#'   Frequency - Inverse Document Frequency). "network" calculates the page rank
+#'   of each document in a topic-specific document-document network projected
+#'   from the co-occurrence of topic-relevant entities in the document.
+#'   Depending on the settings for `document_pmi_weight` the
+#' latter will use a PMI-weighted with potentially negative weights.
+#' @param document_pmi_weight Logical; if `document_relevance = "network"`,
+#'   the network calculation should utilize weights calculated based on the PMI
+#'   (Pointwise Mutual Information). If `FALSE`, a simple co-occurrence weighting
+#'   is performed.
 #' @param verbose Logical indicating whether to print clustering metrics.
 #' @param seed Seed for the parallelization, if a parallel plan is set up (see details).
 #'  TRUE to let future set a seed. Numerical value to set a seed. NULL to not set any seed.
@@ -126,6 +139,9 @@ calculate_dynamic_topics <- function(data,
                                      seed = TRUE,
                                      match_clusters = TRUE,
                                      python_env = "textgraph",
+                                     document_relevance = c("pagerank_tfidf",
+                                                            "network"),
+                                     document_pmi_weight = TRUE,
                                      keep_cluster_objects = FALSE,
                                      keep_networks = FALSE,
                                      verbose = TRUE
@@ -492,9 +508,11 @@ calculate_dynamic_topics <- function(data,
 
   if (!is.null(full_documents)) {
     document_data <- prepare_document_data(topics,
-                                           full_documents,
+                                           documents = full_documents,
                                            document_tokens = feature,
-                                           document_ids = document)
+                                           document_ids = document,
+                                           document_relevance = document_relevance,
+                                           pmi_weight = document_pmi_weight)
   }
 
   # make topic overviews
@@ -517,6 +535,8 @@ calculate_dynamic_topics <- function(data,
     data.table::setorder(topic_overview, -document_occurrences) # overwrite ordering
 
     # additional metrics
+    metrics$document_relevance <- document_relevance
+
     mean_document_occurrences <- mean(topic_overview$document_occurrences)
 
     median_document_occurrences <- stats::median(topic_overview$document_occurrences)
@@ -538,6 +558,7 @@ calculate_dynamic_topics <- function(data,
         )
       }
       cat(
+        "\nDocument Relevance Calculation:", document_relevance,
         "\n Mean Number of Documents per Topic:", mean_document_occurrences,
         "\n Median Number of Documents per Topic:", median_document_occurrences
         )

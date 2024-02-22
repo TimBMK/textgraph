@@ -6,6 +6,16 @@
 #' @param documents document data
 #' @param document_tokens tokens in document data
 #' @param document_ids IDs in document data
+#' @param document_relevance String; How the `document_relevance` should be calculated.
+#'   "pagerank_tfidf" calculates the re-scaled sum of all topic-relevant entities'
+#'   Page Rank in the document multiplied by their tf-idf
+#'   (Term Frequency - Inverse Document Frequency). "network" calculates the
+#'   page rank of each document in a topic-specific document-document network
+#'   projected from the co-occurrence of topic-relevant entities in the document.
+#'   Depending on the settings for `pmi_weight`, the
+#'   latter will use a PMI-weighted with potentially negative weights.
+#' @param pmi_weight Logical indicating whether weights should be calculated based on the PMI (Pointwise Mutual Information) of `document` and `feature`. If `FALSE`, a simple cooccurrence weighting is performed.
+#' @param keep_negative_weights Logical indicating whether to keep edges with negative PMI weights. Only applies if `pmi_weight = TRUE`.
 #'
 #' @return prepared document data
 #'
@@ -22,7 +32,11 @@
 prepare_document_data <- function(topics,
                                   documents,
                                   document_tokens,
-                                  document_ids) {
+                                  document_ids,
+                                  document_relevance = c("pagerank_tfidf",
+                                                         "network"),
+                                  pmi_weight = TRUE) {
+
 
   join_dat <- documents %>% # prepare data for data.table join
     dplyr::select(!!as.name(document_tokens),
@@ -36,39 +50,99 @@ prepare_document_data <- function(topics,
   data.table::setkeyv(topics, "entity")
 
   dat <- data.table::merge.data.table(topics, join_dat, by = "entity",
-                                         allow.cartesian = T) # allows to join large data with entities belonging to multiple topics and occurring in multiple docs
+                                      allow.cartesian = T) # allows to join large data with entities belonging to multiple topics and occurring in multiple docs
 
   invisible(gc()) # run gc() after a cartesian join
 
-  documents <- data.table::as.data.table(documents)
 
-  tf_idf <- documents[ , .N, by = c(document_tokens, document_ids)] %>%  # count duplicated entities
-    tidytext::bind_tf_idf(!!as.name(document_tokens), !!as.name(document_ids), N) %>%  # calculate tf-idf
-    dplyr::rename(entity = !!as.name(document_tokens))
+  if (document_relevance == "pagerank_tfidf") {
 
-  data.table::setkeyv(dat, c("entity", document_ids))
-  data.table::setkeyv(tf_idf, c("entity", document_ids))
+    documents <- data.table::as.data.table(documents)
 
-  dat <- data.table::merge.data.table(dat, tf_idf, by = c("entity", document_ids))
+    tf_idf <- documents[ , .N, by = c(document_tokens, document_ids)] %>%  # count duplicated entities
+      tidytext::bind_tf_idf(!!as.name(document_tokens), !!as.name(document_ids), N) %>%  # calculate tf-idf
+      dplyr::rename(entity = !!as.name(document_tokens))
 
-  dat <- dat %>% # calculate term relevance
-    dplyr::mutate(page_rank = dplyr::case_when(is.na(page_rank) ~ 0, # set missing page ranks to 0 (missing if a term has no connection to other terms in page_rank = "cluster")
-                                               .default = page_rank)) %>%
-    dplyr::mutate(term_relevance = (tf_idf * page_rank) %>% # calculate topic term relevance as normalized (tf_idf * page_rank)
-                    scales::rescale(to = c(0, 1)), # rescale
-                  .by = topic)
+    data.table::setkeyv(dat, c("entity", document_ids))
+    data.table::setkeyv(tf_idf, c("entity", document_ids))
 
-  document_data <- dat[ , .(entities = list(entity),# summarise entities and document relevance. list(entity) is surprisingly costly (but faster than paste())
-                               document_relevance = sum(term_relevance)),
-                           by = c("topic", document_ids)]
+    dat <- data.table::merge.data.table(dat, tf_idf, by = c("entity", document_ids))
 
-  document_data[ , document_relevance := scales::rescale(document_relevance, # rescale per topic
-                                                         to = c(0,100)),
-                 by = "topic"]
+    dat <- dat %>% # calculate term relevance
+      dplyr::mutate(page_rank = dplyr::case_when(is.na(page_rank) ~ 0, # set missing page ranks to 0 (missing if a term has no connection to other terms in page_rank = "cluster")
+                                                 .default = page_rank)) %>%
+      dplyr::mutate(term_relevance = (tf_idf * page_rank) %>% # calculate topic term relevance as normalized (tf_idf * page_rank)
+                      scales::rescale(to = c(0, 1)), # rescale
+                    .by = topic)
 
-  data.table::setorder(document_data, topic, -document_relevance) # order
+    document_data <- dat[ , .(entities = list(entity),# summarise entities and document relevance. list(entity) is surprisingly costly (but faster than paste())
+                              document_relevance = sum(term_relevance)),
+                          by = c("topic", document_ids)]
 
-  invisible(gc()) # run gc() to clear memory
+    document_data[ , document_relevance := scales::rescale(document_relevance, # rescale per topic
+                                                           to = c(0,100)),
+                   by = "topic"]
+
+    data.table::setorder(document_data, topic, -document_relevance) # order
+
+    invisible(gc()) # run gc() to clear memory
+  }
+
+  if (document_relevance == "network") {
+
+    document_data <- dat %>%
+      split(by = "topic") %>%
+      furrr::future_imap(\(data, topic)
+                         { network <- calculate_network(data,
+                                                        document = "entity", # doc and feature are reversed to get doc-doc-networks
+                                                        feature = document_ids,
+                                                        pmi_weight = pmi_weight,
+                                                        as_data_frame = FALSE,
+                                                        keep_negative_weights = TRUE
+                                                        )
+
+                           if ((igraph::E(network) %>% length()) > 0) {
+                             page_rank <- igraph::page_rank(network)$vector %>%
+                               scales::rescale(to = c(0,100)) # rescale
+                             names <- names(page_rank)
+                           } else {
+                             page_rank <- NA
+                             names <- data %>%
+                               dplyr::distinct(!!as.name(document_ids)) %>%
+                               dplyr::pull()
+                           }
+
+                           document_relevance <- data.table::data.table(document_ids = names,
+                                                                        document_relevance = page_rank)
+                           data.table::setnames(document_relevance, "document_ids", document_ids) # rename column to original name
+
+                           document_data <- data[ , .(entities = list(entity)), # summarise entities. list(entity) is surprisingly costly (but faster than paste())
+                                                 by = c("topic", document_ids)]
+
+                           data.table::setkeyv(document_data, document_ids)
+                           data.table::setkeyv(document_relevance, document_ids)
+
+                           document_data <- data.table::merge.data.table(document_data, # merge data
+                                                                         document_relevance,
+                                                                         by =  document_ids)
+
+                           data.table::setorder(document_data, topic, -document_relevance) # order
+
+                           return(document_data)
+
+      }) %>% data.table::rbindlist()
+
+    warning(paste("Unable to calculate networked document relevance for",
+                  document_data %>%
+                    dplyr::filter(is.na(document_relevance)) %>%
+                    dplyr::distinct(topic) %>% nrow(),
+                  "out of",
+                  document_data %>%
+                    dplyr::distinct(topic) %>% nrow(),
+                  "topics. Likely reason: too few entities or documents in these topics."))
+
+  }
+
 
   join_dat <- documents %>% # prepare 2nd join for additional metadata
     dplyr::select(!(!!as.name(document_tokens))) %>%
