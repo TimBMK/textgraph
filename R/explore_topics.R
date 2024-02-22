@@ -95,7 +95,6 @@ explore_topics <- function(
     output_file <- tempfile()
     output_dir <- NULL
   } else {
-    output_dir <- getwd()
     no_output <- FALSE
   }
 
