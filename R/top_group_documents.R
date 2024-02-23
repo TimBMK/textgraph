@@ -61,7 +61,7 @@ top_group_documents <- function(
 
   # some checks
 
-  rlang::arg_match(mode)
+  mode <- rlang::arg_match(mode)
 
   if ("classified_documents" %in% names(classification_result)) {
     classified_documents <- classification_result$classified_documents

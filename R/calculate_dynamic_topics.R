@@ -154,6 +154,11 @@ calculate_dynamic_topics <- function(data,
                                         "dynamic_community_matching.py"))
   }
 
+  # Argument Checks
+  page_rank_calculation <- rlang::arg_match(page_rank_calculation)
+
+  document_relevance <- rlang::arg_match(document_relevance)
+
   # Data Checks
   if (!(document %in% names(data))) {
     stop(paste0("document '", document, "' not in data.\n"))

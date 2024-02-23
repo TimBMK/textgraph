@@ -122,9 +122,9 @@ calculate_topics <- function(text_network,
                              verbose = TRUE
 ) {
   # Argument & data checks
-  rlang::arg_match(page_rank_calculation)
+  page_rank_calculation <- rlang::arg_match(page_rank_calculation)
 
-  rlang::arg_match(document_relevance)
+  document_relevance <- rlang::arg_match(document_relevance)
 
   if (!(igraph::is_igraph(text_network))){
     stop("text_network must be an igraph graph")

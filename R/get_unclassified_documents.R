@@ -45,7 +45,7 @@ get_unclassified_documents <- function(
 
   # some checks
 
-  rlang::arg_match(mode)
+  mode <- rlang::arg_match(mode)
 
   if (!("unclassified_documents" %in% names(classification_result))) {
     stop("Requires unclassified documents within the classifcation_result. Specify return_unclassified_docs = TRUE in classify_documents() to obtain them.")

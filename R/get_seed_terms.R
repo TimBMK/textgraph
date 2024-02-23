@@ -65,7 +65,7 @@ get_seed_terms <- function(data,
                            save_plots = FALSE)
 {
 
-  rlang::arg_match(measure)
+  measure <- rlang::arg_match(measure)
 
   # prepare corpus
 
