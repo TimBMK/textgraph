@@ -5,6 +5,7 @@ params:
   textgraph_topics: NULL
   topic_threshold: NULL
   n_top_terms: NULL
+  top_terms_table: NULL
   n_top_docs: NULL
   time_var: NULL
   floor_time_var_by: NULL
@@ -113,19 +114,28 @@ if ("documents" %in% names(textgraph_topics)) {
 for (topic in topics$topic) {
   cat("\n\n# Topic:", 
       topic,
+      "\n## Topic Proportion:",
+      topics %>% 
+        dplyr::filter(topic == {{topic}}) %>% 
+        dplyr::pull(percentage) %>% scales::percent(accuracy = 0.01),
       "\n\n### Terms in Topic:", 
       textgraph_topics$topics %>% dplyr::filter(topic == {{topic}}) %>% 
         pull(nr_entities),
-      "\n\n## Top Terms:",
-      textgraph_topics$entities %>% dplyr::filter(topic == {{topic}}) %>% 
-        dplyr::slice_max(order_by = page_rank, n = n_top_terms) %>% 
-        dplyr::pull(entity) %>% paste(collapse = ", "),
-      "\n## Topic Proportion:",
-      topics %>% 
-          dplyr::filter(topic == {{topic}}) %>% 
-          dplyr::pull(percentage) %>% scales::percent(accuracy = 0.01),
-      "\n\n"
-      )
+      "\n\n## Top", n_top_terms, "Terms:")
+  if (top_terms_table) {
+    cat("\n")
+    textgraph_topics$entities %>% dplyr::filter(topic == {{topic}}) %>% 
+      dplyr::slice_max(order_by = page_rank, n = n_top_terms) %>% 
+      dplyr::select(!topic) %>% 
+      flextable::flextable() %>% flextable::flextable_to_rmd()
+    cat("<br>") # add linebreak spacer
+  } else {
+    textgraph_topics$entities %>% dplyr::filter(topic == {{topic}}) %>% 
+      dplyr::slice_max(order_by = page_rank, n = n_top_terms) %>% 
+      dplyr::pull(entity) %>% paste(collapse = ", ") %>% 
+      cat()
+  }
+  cat("\n\n")
   
   
   if ("documents" %in% names(textgraph_topics)) { # additional plots and doc vars if docs are available
