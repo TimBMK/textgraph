@@ -170,7 +170,7 @@ calculate_topics <- function(text_network,
     page_rank <- unique(topics$topic) %>% # to do: check if future_map speeds this up
       furrr::future_map(\(topic) {
         subgraph <- igraph::induced_subgraph(text_network,
-                                             which(V(text_network)$cluster == topic),
+                                             which(igraph::V(text_network)$cluster == topic),
                                              impl = "create_from_scratch")
 
         page_rank <- igraph::page_rank(subgraph)$vector
