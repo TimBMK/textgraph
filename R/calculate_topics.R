@@ -239,43 +239,6 @@ calculate_topics <- function(text_network,
     cat("\n")
   }
 
-
-
-  # topic_object <- topics %>%
-  #   split(.$topic)%>%
-  #   purrr::imap(\(topic, id)
-  #               {
-  #                 if (!is.null(documents)) {
-  #                   entities <- topic %>%
-  #                     dplyr::select(!tidyr::any_of(names(documents))) %>%
-  #                     dplyr::distinct() %>%
-  #                     dplyr::arrange(dplyr::desc(page_rank))
-  #                 } else {
-  #                   entities <- topic %>%
-  #                     dplyr::arrange(dplyr::desc(page_rank))
-  #                 }
-  #
-  #                 res <- list(entities = entities)
-  #
-  #                 if (!is.null(documents)){ # add document data with tf_idf
-  #                   document_data <- tf_idf %>%
-  #                     dplyr::filter(topic == id) %>%
-  #                     dplyr::summarise(entities = list(entity),
-  #                                      document_relevance = sum(term_relevance), # maybe rescale this, but fine-grained
-  #                                      .by = document_ids) %>%
-  #                     dplyr::mutate(topic = id) %>%
-  #                     dplyr::arrange(dplyr::desc(document_relevance))
-  #
-  #                   res$documents <- document_data
-  #                 }
-  #                 return(res)
-  #   })
-  #
-  # textgraph_topic <- list(
-  #   topics = topic_object,
-  #   metrics = metrics
-  # )
-
   # Finalize Topic Object
   textgraph_topic <- list(
     metrics = metrics,
