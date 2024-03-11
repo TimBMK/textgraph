@@ -51,7 +51,7 @@ top_group_terms <- function(
 ){
 
   # some checks
-  rlang::arg_match(mode)
+  mode <- rlang::arg_match(mode)
 
   if (!("walk_terms" %in% names(classification_result))) {
     stop("Requires walk terms within the classifcation_result. Specify return_walk_terms = TRUE in classify_documents() to obtain them.")

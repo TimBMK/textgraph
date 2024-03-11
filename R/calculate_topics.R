@@ -20,8 +20,25 @@
 #' @param cluster_function The clustering function to use. Can be any igraph clustering function.
 #'  Default is `igraph::cluster_leiden`.
 #' @param ... Additional arguments passed to `cluster_function`.
-#' @param keep_cluster_object Logical indicating whether to keep the igraph cluster object.
-#'  Can be helpful for additional checks. See `help(igraph::membership)`
+#' @param keep_cluster_object Logical indicating whether to keep the igraph
+#'   cluster object. Can be helpful for additional checks. See
+#'   `help(igraph::membership)`
+#' @param document_relevance String; How the `document_relevance` of
+#'   topic-specific documents should be calculated (if they are provided).
+#'   "pagerank_tfidf" calculates the re-scaled sum of all topic-relevant
+#'   entities' Page Rank in the document multiplied by their tf-idf (Term
+#'   Frequency - Inverse Document Frequency). "network" calculates the page rank
+#'   of each document in a topic-specific document-document network projected
+#'   from the co-occurrence of topic-relevant entities in the document.
+#'   Depending on the settings for `document_pmi_weight` the
+#'   latter will use a PMI-weighted with potentially negative weights.
+#'   As the calculation of topic-specific networks can be computationallly
+#'   expensive, it is recommended to set up a parallelization `future::plan()`
+#'   for this option. See details.
+#' @param document_pmi_weight Logical; if `document_relevance = "network"`,
+#'   the network calculation should utilize weights calculated based on the PMI
+#'   (Pointwise Mutual Information). If `FALSE`, a simple co-occurrence weighting
+#'   is performed.
 #' @param verbose Logical indicating whether to print clustering metrics.
 #'
 #' @return A list object of class "textgraph_topics" containing topic entities,
@@ -43,11 +60,9 @@
 #'  or locally for each cluster with `page_rank_calculation = "global"`, where a
 #'  subgraph is induced containing only the nodes of the given cluster. This takes longer,
 #'  but can provide a better measure of a term's relevance within a topic. For the latter option,
-#'  multithreading is supported if a plan was set up with `future::plan()`.
-#'  The `document_relevance` calculated for the optionally provided documents indicates
-#'  how relevant a document is to a given topics. It is calculated as the re-scaled sum of
-#'  all topic-relevant entities' Page Rank in the document multiplied by their tf-idf
-#'  (Term Frequency - Inverse Document Frequency).
+#'  multithreading is supported if a plan was set up with `future::plan()`. If
+#'  `document_relevance` is set to "network", the calculation of the topic-specific networks
+#'  is parallelized as well.
 #'
 #' @examples
 #' \dontrun{
@@ -100,11 +115,16 @@ calculate_topics <- function(text_network,
                              page_rank_calculation = c("global", "cluster"),
                              cluster_function = igraph::cluster_leiden,
                              ...,
+                             document_relevance = c("pagerank_tfidf",
+                                                    "network"),
+                             document_pmi_weight = TRUE,
                              keep_cluster_object = FALSE,
                              verbose = TRUE
 ) {
   # Argument & data checks
-  rlang::arg_match(page_rank_calculation)
+  page_rank_calculation <- rlang::arg_match(page_rank_calculation)
+
+  document_relevance <- rlang::arg_match(document_relevance)
 
   if (!(igraph::is_igraph(text_network))){
     stop("text_network must be an igraph graph")
@@ -150,7 +170,7 @@ calculate_topics <- function(text_network,
     page_rank <- unique(topics$topic) %>% # to do: check if future_map speeds this up
       furrr::future_map(\(topic) {
         subgraph <- igraph::induced_subgraph(text_network,
-                                             which(V(text_network)$cluster == topic),
+                                             which(igraph::V(text_network)$cluster == topic),
                                              impl = "create_from_scratch")
 
         page_rank <- igraph::page_rank(subgraph)$vector
@@ -173,9 +193,12 @@ calculate_topics <- function(text_network,
   # prepare document data
   if (!is.null(documents)) {
     document_data <- prepare_document_data(topics,
-                                           documents,
-                                           document_tokens,
-                                           document_ids)
+                                           documents = documents,
+                                           document_tokens = document_tokens,
+                                           document_ids = document_ids,
+                                           document_relevance = document_relevance,
+                                           pmi_weight = document_pmi_weight
+                                           )
   }
 
   # make topic overviews
@@ -193,6 +216,8 @@ calculate_topics <- function(text_network,
       dplyr::arrange(dplyr::desc(document_occurrences)) # overwrite ordering
 
     # additional metrics
+    metrics$document_relevance <- document_relevance
+
     mean_document_occurrences <- mean(topic_overview$document_occurrences)
 
     median_document_occurrences <- stats::median(topic_overview$document_occurrences)
@@ -206,49 +231,13 @@ calculate_topics <- function(text_network,
   if (verbose) {
     if (!is.null(documents)) {
         cat(paste(
+          "\nDocument Relevance Calculation:", document_relevance,
           "\nMean Number of Documents per Topic:", mean_document_occurrences,
           "\nMedian Number of Documents per Topic:", median_document_occurrences
         ))
     }
     cat("\n")
   }
-
-
-
-  # topic_object <- topics %>%
-  #   split(.$topic)%>%
-  #   purrr::imap(\(topic, id)
-  #               {
-  #                 if (!is.null(documents)) {
-  #                   entities <- topic %>%
-  #                     dplyr::select(!tidyr::any_of(names(documents))) %>%
-  #                     dplyr::distinct() %>%
-  #                     dplyr::arrange(dplyr::desc(page_rank))
-  #                 } else {
-  #                   entities <- topic %>%
-  #                     dplyr::arrange(dplyr::desc(page_rank))
-  #                 }
-  #
-  #                 res <- list(entities = entities)
-  #
-  #                 if (!is.null(documents)){ # add document data with tf_idf
-  #                   document_data <- tf_idf %>%
-  #                     dplyr::filter(topic == id) %>%
-  #                     dplyr::summarise(entities = list(entity),
-  #                                      document_relevance = sum(term_relevance), # maybe rescale this, but fine-grained
-  #                                      .by = document_ids) %>%
-  #                     dplyr::mutate(topic = id) %>%
-  #                     dplyr::arrange(dplyr::desc(document_relevance))
-  #
-  #                   res$documents <- document_data
-  #                 }
-  #                 return(res)
-  #   })
-  #
-  # textgraph_topic <- list(
-  #   topics = topic_object,
-  #   metrics = metrics
-  # )
 
   # Finalize Topic Object
   textgraph_topic <- list(

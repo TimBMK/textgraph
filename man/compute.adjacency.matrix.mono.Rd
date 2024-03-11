@@ -4,7 +4,7 @@
 \alias{compute.adjacency.matrix.mono}
 \title{Compute Adjacency Matrix for a Monoplex Network}
 \usage{
-\method{compute}{adjacency.matrix.mono}(x)
+compute.adjacency.matrix.mono(x)
 }
 \arguments{
 \item{x}{A multiplex network object.}

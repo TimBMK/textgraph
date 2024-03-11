@@ -13,6 +13,8 @@ calculate_topics(
   page_rank_calculation = c("global", "cluster"),
   cluster_function = igraph::cluster_leiden,
   ...,
+  document_relevance = c("pagerank_tfidf", "network"),
+  document_pmi_weight = TRUE,
   keep_cluster_object = FALSE,
   verbose = TRUE
 )
@@ -42,8 +44,27 @@ Default is `igraph::cluster_leiden`.}
 
 \item{...}{Additional arguments passed to `cluster_function`.}
 
-\item{keep_cluster_object}{Logical indicating whether to keep the igraph cluster object.
-Can be helpful for additional checks. See `help(igraph::membership)`}
+\item{document_relevance}{String; How the `document_relevance` of
+topic-specific documents should be calculated (if they are provided).
+"pagerank_tfidf" calculates the re-scaled sum of all topic-relevant
+entities' Page Rank in the document multiplied by their tf-idf (Term
+Frequency - Inverse Document Frequency). "network" calculates the page rank
+of each document in a topic-specific document-document network projected
+from the co-occurrence of topic-relevant entities in the document.
+Depending on the settings for `document_pmi_weight` the
+latter will use a PMI-weighted with potentially negative weights.
+As the calculation of topic-specific networks can be computationallly
+expensive, it is recommended to set up a parallelization `future::plan()`
+for this option. See details.}
+
+\item{document_pmi_weight}{Logical; if `document_relevance = "network"`,
+the network calculation should utilize weights calculated based on the PMI
+(Pointwise Mutual Information). If `FALSE`, a simple co-occurrence weighting
+is performed.}
+
+\item{keep_cluster_object}{Logical indicating whether to keep the igraph
+cluster object. Can be helpful for additional checks. See
+`help(igraph::membership)`}
 
 \item{verbose}{Logical indicating whether to print clustering metrics.}
 }
@@ -73,11 +94,9 @@ The function performs topic clustering on the input text network, calculates
  or locally for each cluster with `page_rank_calculation = "global"`, where a
  subgraph is induced containing only the nodes of the given cluster. This takes longer,
  but can provide a better measure of a term's relevance within a topic. For the latter option,
- multithreading is supported if a plan was set up with `future::plan()`.
- The `document_relevance` calculated for the optionally provided documents indicates
- how relevant a document is to a given topics. It is calculated as the re-scaled sum of
- all topic-relevant entities' Page Rank in the document multiplied by their tf-idf
- (Term Frequency - Inverse Document Frequency).
+ multithreading is supported if a plan was set up with `future::plan()`. If
+ `document_relevance` is set to "network", the calculation of the topic-specific networks
+ is parallelized as well.
 }
 \examples{
 \dontrun{

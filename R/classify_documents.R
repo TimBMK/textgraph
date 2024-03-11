@@ -118,9 +118,9 @@ classify_documents <- function(
 
   ## Data and Input Checks
 
-  rlang::arg_match(classification_measure)
+  classification_measure <- rlang::arg_match(classification_measure)
 
-  rlang::arg_match(normalize_scores)
+  normalize_scores <- rlang::arg_match(normalize_scores)
 
   if (!is.null(cut_frequent_group_terms)) {
     if (!is.na(cut_frequent_group_terms)) {

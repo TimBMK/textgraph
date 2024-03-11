@@ -19,6 +19,8 @@ calculate_dynamic_topics(
   seed = TRUE,
   match_clusters = TRUE,
   python_env = "textgraph",
+  document_relevance = c("pagerank_tfidf", "network"),
+  document_pmi_weight = TRUE,
   keep_cluster_objects = FALSE,
   keep_networks = FALSE,
   verbose = TRUE
@@ -66,10 +68,24 @@ matching algorithm.}
 
 \item{python_env}{Python environment to use for the dynamic community matching. Set this up with [install_community_matching()]. See details.}
 
+\item{document_pmi_weight}{Logical; if `document_relevance = "network"`,
+the network calculation should utilize weights calculated based on the PMI
+(Pointwise Mutual Information). If `FALSE`, a simple co-occurrence weighting
+is performed.}
+
 \item{keep_cluster_objects}{Logical indicating whether to keep the igraph cluster object of each snapshot.
 Can be helpful for additional checks. See `help(igraph::membership)`. Also returns clustering metrics for each snapshot cluster.}
 
-\item{keep_networks}{Logical indicating whether to keep the igraph network of each snapshot.}
+\item{keep_networks}{Logical indicating whether to keep the igraph network of each snapshot.
+#' @param document_relevance String; How the `document_relevance` of
+  topic-specific documents should be calculated (if they are provided).
+  "pagerank_tfidf" calculates the re-scaled sum of all topic-relevant
+  entities' Page Rank in the document multiplied by their tf-idf (Term
+  Frequency - Inverse Document Frequency). "network" calculates the page rank
+  of each document in a topic-specific document-document network projected
+  from the co-occurrence of topic-relevant entities in the document.
+  Depending on the settings for `document_pmi_weight` the
+latter will use a PMI-weighted with potentially negative weights.}
 
 \item{verbose}{Logical indicating whether to print clustering metrics.}
 }
