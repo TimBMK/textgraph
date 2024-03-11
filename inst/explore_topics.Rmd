@@ -1,6 +1,5 @@
 ---
 title: "Textgraph Topic Exploration"
-output: html_document
 params:
   textgraph_topics: NULL
   topic_threshold: NULL
@@ -12,6 +11,7 @@ params:
   split_var: NULL
   text_var: NULL
   document_ids: NULL
+  output_format: NULL
 ---
 
 
