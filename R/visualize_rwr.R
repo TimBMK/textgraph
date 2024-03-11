@@ -116,10 +116,11 @@ visualize_rwr <- function(rwr_terms,
                                         color = !!as.name(group_name)),
                            repel = TRUE) +
     ggplot2::labs(title = "overview",
-                 caption = paste0("Edge Opacity visualizes a term's ",
-                                 classification_measure,
-                                 "towards ", group_name, ".\n",
-                                 "Entities marked with * are seed terms.")) +
+                  edge_alpha = classification_measure,
+                  caption = paste0("Edge Opacity visualizes a term's ",
+                                   classification_measure,
+                                   "towards ", group_name, ".\n",
+                                   "Entities marked with * are seed terms.")) +
     ggplot2::scale_color_discrete(breaks = top_terms[[group_name]]) + # this drops NA by filtering for all values in the top term groups
     ggraph::theme_graph()
 
