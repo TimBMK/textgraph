@@ -27,7 +27,7 @@
 #' @importFrom rlang arg_match
 #' @importFrom dplyr "%>%"
 #' @importFrom dplyr slice_max filter case_when mutate select rename join_by left_join
-#' @importFrom igraph is_igraph graph_from_data_frame set_vertex_attr V induced_subgraph
+#' @importFrom igraph is_igraph graph_from_data_frame set_vertex_attr V induced_subgraph subgraph.edges
 #' @importFrom ggraph ggraph geom_edge_fan geom_node_point geom_node_text theme_graph
 #' @importFrom ggplot2 aes labs scale_color_discrete
 #'
@@ -139,6 +139,9 @@ visualize_rwr <- function(rwr_terms,
                     subgraph <- igraph::induced_subgraph(network,
                                              which(igraph::V(network)$name %in% group_dat$NodeNames),
                                              impl = "create_from_scratch")
+
+                    subgraph <- igraph::subgraph.edges(subgraph, # drop negative edges (not needed for visualization)
+                                                       which(E(subgraph)$weight > 0))
 
                     graph_dat <- data.frame( # data ordered in the same way as the graph
                       NodeNames = igraph::V(subgraph)$name) %>%
