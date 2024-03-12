@@ -92,8 +92,12 @@ load_textgraph_topics <- function(file, verbose = TRUE) {
 
       document_ids <- colnames(textgraph_topics$documents)[1] # get name of ID col
 
-      textgraph_topics$documents <- textgraph_topics$documents[, .(entities = list(entities)), # make entities into list again. list(entity) is surprisingly costly (but faster than paste())),
-                                                               by = c("topic", document_ids)]
+      textgraph_topics$documents <-
+        textgraph_topics$documents[, .(entities = list(entities)), # make entities into list again. list(entity) is surprisingly costly (but faster than paste())),
+                                   by = eval(
+                                     names(textgraph_topics$documents)[!(names( # by all cols except "entities"
+                                       textgraph_topics$documents) %in% "entities")]
+                                     )]
     }
   }
 
